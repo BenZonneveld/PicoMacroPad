@@ -18,7 +18,7 @@ target_sources(GFX-lib INTERFACE
 	${CMAKE_CURRENT_LIST_DIR}/Adafruit_GFX.cpp
 #	${CMAKE_CURRENT_LIST_DIR}/Adafruit_GrayOLED.cpp
 	${CMAKE_CURRENT_LIST_DIR}/Adafruit_SPITFT.cpp
-#	${CMAKE_CURRENT_LIST_DIR}/glcdfont.c
+	${CMAKE_CURRENT_LIST_DIR}/glcdfont.c
 	${CMAKE_CURRENT_LIST_DIR}/Print.cpp
 )
 

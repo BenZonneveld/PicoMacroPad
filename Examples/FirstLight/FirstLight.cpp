@@ -9,32 +9,10 @@
 #include "FirstLight.h"
 
 #include <Adafruit_GFX.h>    // Core graphics library
-//#include <Adafruit_ST7735.h> // Hardware-specific library for ST7735
 #include <Adafruit_SPITFT.h> // Hardware-specific library for ST7789
 
-// OPTION 1 (recommended) is to use the HARDWARE SPI pins, which are unique
-// to each board and not reassignable. For Arduino Uno: MOSI = pin 11 and
-// SCLK = pin 13. This is the fastest mode of operation and is required if
-// using the breakout board's microSD card.
 
-// For 1.44" and 1.8" TFT with ST7735 use:
-//Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_RST);
-
-// For 1.14", 1.3", 1.54", 1.69", and 2.0" TFT with ST7789:
 Adafruit_SPITFT tft = Adafruit_SPITFT(240,320);
-
-
-// OPTION 2 lets you interface the display using ANY TWO or THREE PINS,
-// tradeoff being that performance is not as fast as hardware SPI above.
-//#define TFT_MOSI 11  // Data out
-//#define TFT_SCLK 13  // Clock out
-
-// For ST7735-based displays, we will use this call
-//Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
-
-// OR for the ST7789-based displays, we will use this call
-//Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCLK, TFT_RST);
-
 
 float p = 3.1415926;
 
@@ -59,52 +37,98 @@ int main(void) {
 
     printf("Initialized\r\n");
 
-    uint16_t time = millis();
+    uint32_t time = millis();
     tft.fillScreen(ST77XX_BLACK);
     time = millis() - time;
 
-    printf("%i\r\n",time);
+    printf("%i to fill screen \r\n",time);
     sleep_ms(500);
 
     // large block of text
     tft.fillScreen(ST77XX_BLACK);
+    time = millis();
     testdrawtext((char *)"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur adipiscing ante sed nibh tincidunt feugiat. Maecenas enim massa, fringilla sed malesuada et, malesuada sit amet turpis. Sed porttitor neque ut ante pretium vitae malesuada nunc bibendum. Nullam aliquet ultrices massa eu hendrerit. Ut sed nisi lorem. In vestibulum purus a tortor imperdiet posuere. ", ST77XX_WHITE);
+    time = millis() - time;
+    printf("%i to draw Text \r\n", time);
     sleep_ms(1000);
 
     // tft print function!
+    time = millis(); 
     tftPrintTest();
+    time = millis() - time;
+    printf("%i to Print Test \r\n", time);
     sleep_ms(4000);
 
     // a single pixel
+    time = millis(); 
     tft.drawPixel(tft.width() / 2, tft.height() / 2, ST77XX_GREEN);
+    time = millis() - time;
+    printf("%i to draw Pixel\r\n", time);
+    
     sleep_ms(500);
 
     // line draw test
-    testlines(ST77XX_YELLOW);
+    time = millis(); 
+    testlines(ST77XX_YELLOW);    
+    time = millis() - time;
+    printf("%i lines \r\n", time);
+
     sleep_ms(500);
 
     // optimized lines
+    time = millis(); 
     testfastlines(ST77XX_RED, ST77XX_BLUE);
+    time = millis() - time;
+    printf("%i to do fastlines \r\n", time);
+
     sleep_ms(500);
 
+    time = millis();
     testdrawrects(ST77XX_GREEN);
+    time = millis() - time;
+    printf("%i to drawrects \r\n", time);
+
     sleep_ms(500);
 
+    time = millis();
     testfillrects(ST77XX_YELLOW, ST77XX_MAGENTA);
+    time = millis() - time;
+    printf("%i to do filledrects \r\n", time);
+
     sleep_ms(500);
 
     tft.fillScreen(ST77XX_BLACK);
+    time = millis(); 
     testfillcircles(10, ST77XX_BLUE);
+    time = millis() - time;
+    printf("%i for fill circles \r\n", time);
+
+    time = millis(); 
     testdrawcircles(10, ST77XX_WHITE);
+    time = millis() - time;
+    printf("%i to draw Circles \r\n", time);
+
     sleep_ms(500);
 
+    time = millis(); 
     testroundrects();
+    time = millis() - time;
+    printf("%i for round rects\r\n", time);
+
     sleep_ms(500);
 
+    time = millis();
     testtriangles();
+    time = millis() - time;
+    printf("%i for triangles\r\n", time);
+
     sleep_ms(500);
 
+    time = millis();
     mediabuttons();
+    time = millis() - time;
+    printf("%i for mediabuttons\r\n", time);
+
     sleep_ms(500);
 
     printf("done\r\n");

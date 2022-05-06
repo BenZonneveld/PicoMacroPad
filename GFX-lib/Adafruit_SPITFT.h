@@ -30,9 +30,13 @@
 #define LCD_BKL_PIN		13
 #define LCD_MOSI_PIN	11
 #define LCD_MISO_PIN	12
+#define TP_CS_PIN		16
+#define TP_IRQ_PIN		17
+#define SD_CS_PIN		22
 
 // HARDWARE CONFIG ---------------------------------------------------------
-#define DEFAULT_SPI_FREQ 4000000L ///< Hardware SPI default speed
+#define SPI_MHZ 80
+#define SPI_DEFAULT_FREQ (SPI_MHZ * 1000000) ///< Default SPI data clock frequency
 
 
 
@@ -120,7 +124,6 @@ public:
   // values defined in SPI.h, which are NOT the same as 0 for SPI_MODE0,
   // 1 for SPI_MODE1, etc...use ONLY the SPI_MODEn defines! Only!
   // Name is outdated (interface may be parallel) but for compatibility:
-  void initSPI();
   void setSPISpeed(uint32_t freq);
   // Chip select and/or hardware SPI transaction start as needed:
   void startWrite(void);
@@ -210,7 +213,7 @@ public:
               connection is parallel.
   */
   void SPI_CS_HIGH(void) {
-    gpio_put(LCD_DC_PIN, true);
+    gpio_put(LCD_DC_PIN, 1);
   }
 
   /*!
@@ -220,21 +223,21 @@ public:
               connection is parallel.
   */
   void SPI_CS_LOW(void) {
-    gpio_put(LCD_CS_PIN, false);
+    gpio_put(LCD_CS_PIN, 0);
   }
 
   /*!
       @brief  Set the data/command line HIGH (data mode).
   */
   void SPI_DC_HIGH(void) {
-    gpio_put(LCD_DC_PIN, true);
+    gpio_put(LCD_DC_PIN, 1);
   }
 
   /*!
       @brief  Set the data/command line LOW (command mode).
   */
   void SPI_DC_LOW(void) {
-    gpio_put(LCD_DC_PIN, false);
+    gpio_put(LCD_DC_PIN, 0);
   }
 
 protected:
@@ -257,8 +260,6 @@ protected:
   uint8_t _colstart2 = 0, ///< Offset from the right
       _rowstart2 = 0;     ///< Offset from the bottom
 
-  void begin(uint32_t freq = 0);
-  void commonInit(const uint8_t* cmdList);
   void displayInit(const uint8_t* addr);
   void setColRowStart(int8_t col, int8_t row);
   //uint32_t _freq = 0; ///< Dummy var to keep subclasses happy
