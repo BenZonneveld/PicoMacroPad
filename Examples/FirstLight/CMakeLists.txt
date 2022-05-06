@@ -7,7 +7,7 @@ include(../../pico_sdk_import.cmake)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
-set(PROJECT TFT_Test1)
+set(PROJECT FirstLight)
 #set(FAMILY rp2040)
 #set(BOARD adafruit_feather_rp2040)
 # Default path to the SDK

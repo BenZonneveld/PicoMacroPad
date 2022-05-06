@@ -37,7 +37,7 @@
 #include "Adafruit_SPITFT.h"
 
 
-#define SPI_MHZ 4
+#define SPI_MHZ 40
 #define SPI_DEFAULT_FREQ (SPI_MHZ * 1000000) ///< Default SPI data clock frequency
 
 // Possible values for Adafruit_SPITFT.connection:
@@ -89,7 +89,7 @@ Adafruit_SPITFT::Adafruit_SPITFT(uint16_t w, uint16_t h)
             could probably be made private...quite a few class functions
             were generously put in the public section.
 */
-void Adafruit_SPITFT::initSPI() {
+/*void Adafruit_SPITFT::initSPI() {
 
   printf("spi init!\r\n");
   spi_init(spi1, DEFAULT_SPI_FREQ); // Init at 4 Mhz
@@ -103,7 +103,7 @@ void Adafruit_SPITFT::initSPI() {
   gpio_init(LCD_CS_PIN);
   gpio_set_dir(LCD_CS_PIN, GPIO_OUT);
   gpio_put(LCD_CS_PIN, 1);
-}
+}*/
 
 /*!
     @brief  Allow changing the SPI clock speed after initialization
@@ -805,8 +805,6 @@ uint16_t Adafruit_SPITFT::readcommand16(uint16_t addr) {
 // compile to different things based on #defines -- typically just a few
 // instructions. Others, not so much, those are not inlined.
 
-
-
 /*!
     @brief  Issue a single 8-bit value to the display. Chip-select,
             transaction and data/command selection must have been
@@ -916,10 +914,6 @@ void Adafruit_SPITFT::SPI_WRITE32(uint32_t l) {
     spi_write_blocking(spi1, (uint8_t *)&l, 4);
 }
 
-
-
-/**************************************************************************/
-
 /**************************************************************************/
 /*!
     @brief  Companion code to the initiliazation tables. Reads and issues
@@ -958,50 +952,6 @@ void Adafruit_SPITFT::displayInit(const uint8_t* addr) {
 
 /**************************************************************************/
 /*!
-    @brief  Initialize ST77xx chip. Connects to the ST77XX over SPI and
-            sends initialization procedure commands
-    @param  freq  Desired SPI clock frequency
-*/
-/**************************************************************************/
-void Adafruit_SPITFT::begin(uint32_t freq) {
-    if (!freq) {
-        freq = SPI_DEFAULT_FREQ;
-    }
-    _freq = freq;
-
-    invertOnCommand = ST77XX_INVON;
-    invertOffCommand = ST77XX_INVOFF;
-
-    // LCD Reset
-    gpio_init(LCD_RST_PIN);
-    gpio_set_dir(LCD_RST_PIN, GPIO_OUT);
-    gpio_put(LCD_RST_PIN, 1);
-    sleep_ms(500);
-    gpio_put(LCD_RST_PIN, 0);
-    sleep_ms(500);
-    gpio_put(LCD_RST_PIN, 1);
-    sleep_ms(500);
-
-    initSPI();
-
-}
-
-/**************************************************************************/
-/*!
-    @brief  Initialization code common to all ST77XX displays
-    @param  cmdList  Flash memory array with commands and data to send
-*/
-/**************************************************************************/
-void Adafruit_SPITFT::commonInit(const uint8_t* cmdList) {
-    begin();
-
-    if (cmdList) {
-        displayInit(cmdList);
-    }
-}
-
-/**************************************************************************/
-/*!
   @brief  SPI displays set an address window rectangle for blitting pixels
   @param  x  Top left corner x coordinate
   @param  y  Top left corner x coordinate
@@ -1025,43 +975,6 @@ void Adafruit_SPITFT::setAddrWindow(uint16_t x, uint16_t y, uint16_t w,
     writeCommand(ST77XX_RAMWR); // write to RAM
 }
 
-/**************************************************************************/
-/*!
-    @brief  Set origin of (0,0) and orientation of TFT display
-    @param  m  The index for rotation, from 0-3 inclusive
-*/
-/**************************************************************************/
-/*void Adafruit_SPITFT::setRotation(uint8_t m) {
-  uint8_t madctl = 0;
-
-  rotation = m % 4; // can't be higher than 3
-
-  switch (rotation) {
-  case 0:
-    madctl = ST77XX_MADCTL_MX | ST77XX_MADCTL_MY | ST77XX_MADCTL_RGB;
-    _xstart = _colstart;
-    _ystart = _rowstart;
-    break;
-  case 1:
-    madctl = ST77XX_MADCTL_MY | ST77XX_MADCTL_MV | ST77XX_MADCTL_RGB;
-    _ystart = _colstart;
-    _xstart = _rowstart;
-    break;
-  case 2:
-    madctl = ST77XX_MADCTL_RGB;
-    _xstart = _colstart;
-    _ystart = _rowstart;
-    break;
-  case 3:
-    madctl = ST77XX_MADCTL_MX | ST77XX_MADCTL_MV | ST77XX_MADCTL_RGB;
-    _ystart = _colstart;
-    _xstart = _rowstart;
-    break;
-  }
-
-  sendCommand(ST77XX_MADCTL, &madctl, 1);
-}
-*/
 /**************************************************************************/
 /*!
     @brief  Set origin of (0,0) of display with offsets
@@ -1104,139 +1017,16 @@ void Adafruit_SPITFT::enableSleep(bool enable) {
     sendCommand(enable ? ST77XX_SLPIN : ST77XX_SLPOUT);
 }
 
-////////// stuff not actively being used, but kept for posterity
-/*
-
- uint8_t Adafruit_ST77xx::spiread(void) {
- uint8_t r = 0;
- if (_sid > 0) {
- r = shiftIn(_sid, _sclk, MSBFIRST);
- } else {
- //SID_DDR &= ~_BV(SID);
- //int8_t i;
- //for (i=7; i>=0; i--) {
- //  SCLK_PORT &= ~_BV(SCLK);
- //  r <<= 1;
- //  r |= (SID_PIN >> SID) & 0x1;
- //  SCLK_PORT |= _BV(SCLK);
- //}
- //SID_DDR |= _BV(SID);
-
- }
- return r;
- }
-
- void Adafruit_ST77xx::dummyclock(void) {
-
- if (_sid > 0) {
- digitalWrite(_sclk, LOW);
- digitalWrite(_sclk, HIGH);
- } else {
- // SCLK_PORT &= ~_BV(SCLK);
- //SCLK_PORT |= _BV(SCLK);
- }
- }
- uint8_t Adafruit_ST77xx::readdata(void) {
- *portOutputRegister(rsport) |= rspin;
-
- *portOutputRegister(csport) &= ~ cspin;
-
- uint8_t r = spiread();
-
- *portOutputRegister(csport) |= cspin;
-
- return r;
-
- }
-
- uint8_t Adafruit_ST77xx::readcommand8(uint8_t c) {
- digitalWrite(_rs, LOW);
-
- *portOutputRegister(csport) &= ~ cspin;
-
- spiwrite(c);
-
- digitalWrite(_rs, HIGH);
- pinMode(_sid, INPUT); // input!
- digitalWrite(_sid, LOW); // low
- spiread();
- uint8_t r = spiread();
-
-
- *portOutputRegister(csport) |= cspin;
-
-
- pinMode(_sid, OUTPUT); // back to output
- return r;
- }
-
-
- uint16_t Adafruit_ST77xx::readcommand16(uint8_t c) {
- digitalWrite(_rs, LOW);
- if (_cs)
- digitalWrite(_cs, LOW);
-
- spiwrite(c);
- pinMode(_sid, INPUT); // input!
- uint16_t r = spiread();
- r <<= 8;
- r |= spiread();
- if (_cs)
- digitalWrite(_cs, HIGH);
-
- pinMode(_sid, OUTPUT); // back to output
- return r;
- }
-
- uint32_t Adafruit_ST77xx::readcommand32(uint8_t c) {
- digitalWrite(_rs, LOW);
- if (_cs)
- digitalWrite(_cs, LOW);
- spiwrite(c);
- pinMode(_sid, INPUT); // input!
-
- dummyclock();
- dummyclock();
-
- uint32_t r = spiread();
- r <<= 8;
- r |= spiread();
- r <<= 8;
- r |= spiread();
- r <<= 8;
- r |= spiread();
- if (_cs)
- digitalWrite(_cs, HIGH);
-
- pinMode(_sid, OUTPUT); // back to output
- return r;
- }
-
- */
-
- // CONSTRUCTORS ************************************************************
-
- /*!
-     @brief  Instantiate Adafruit ST7789 driver
- */
- //Adafruit_ST7789::Adafruit_ST7789()
- //    : Adafruit_ST77xx(240, 320) {}
-
  // SCREEN INITIALIZATION ***************************************************
-
- // Rather than a bazillion writecommand() and writedata() calls, screen
- // initialization commands and arguments are organized in these tables
- // stored in PROGMEM.  The table may look bulky, but that's mostly the
- // formatting -- storage-wise this is hundreds of bytes more compact
- // than the equivalent code.  Companion function follows.
 
  // clang-format off
 
 static const uint8_t st7789[] = {                // Init commands for 7789 screens
     16,                              //  9 commands in list:
-    ST77XX_SWRESET,   ST_CMD_DELAY, //  1: Software reset, no args, w/delay
+    ST77XX_SLPOUT,   ST_CMD_DELAY, //  1: Software reset, no args, w/delay
       100,                          //     ~150 ms delay
-    ST77XX_SLPOUT ,   ST_CMD_DELAY, //  2: Out of sleep mode, no args, w/delay
+    ST77XX_MADCTL ,  1 + ST_CMD_DELAY, //  2: Out of sleep mode, no args, w/delay
+        0x00,
       10,                          //      10 ms delay
     ST77XX_COLMOD , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
       0x55,                         //     16-bit color
@@ -1325,28 +1115,53 @@ static const uint8_t st7789[] = {                // Init commands for 7789 scree
 */
 /**************************************************************************/
 void Adafruit_SPITFT::init(uint16_t width, uint16_t height) {
-    commonInit(NULL);
-    if (width == 240 && height == 240) {
-        // 1.3", 1.54" displays (right justified)
-        _rowstart = (320 - height);
-        _rowstart2 = 0;
-        _colstart = _colstart2 = (240 - width);
-    }
-    else if (width == 135 && height == 240) {
-        // 1.14" display (centered, with odd size)
-        _rowstart = _rowstart2 = (int)((320 - height) / 2);
-        // This is the only device currently supported device that has different
-        // values for _colstart & _colstart2. You must ensure that the extra
-        // pixel lands in _colstart and not in _colstart2
-        _colstart = (int)((240 - width + 1) / 2);
-        _colstart2 = (int)((240 - width) / 2);
-    }
-    else {
-        // 1.47", 1.69, 1.9", 2.0" displays (centered)
-        _rowstart = _rowstart2 = (int)((320 - height) / 2);
-        _colstart = _colstart2 = (int)((240 - width) / 2);
-    }
+    invertOnCommand = ST77XX_INVON;
+    invertOffCommand = ST77XX_INVOFF;
 
+    // GPIO Setup
+    gpio_init(LCD_RST_PIN);
+    gpio_init(LCD_CS_PIN);
+    gpio_init(LCD_DC_PIN);
+    gpio_init(LCD_BKL_PIN);
+    gpio_init(TP_CS_PIN);
+    gpio_init(TP_IRQ_PIN);
+    gpio_init(SD_CS_PIN);
+    
+    gpio_set_dir(LCD_RST_PIN, GPIO_OUT);
+    gpio_set_dir(LCD_CS_PIN, GPIO_OUT);
+    gpio_set_dir(LCD_DC_PIN, GPIO_OUT);
+    gpio_set_dir(LCD_BKL_PIN, GPIO_OUT);
+    gpio_set_dir(TP_CS_PIN, GPIO_OUT);
+    gpio_set_dir(TP_IRQ_PIN, GPIO_IN);
+    gpio_set_dir(SD_CS_PIN, GPIO_OUT);
+    gpio_set_pulls(TP_IRQ_PIN, true, false);
+
+    gpio_put(TP_CS_PIN, 1);
+    gpio_put(LCD_CS_PIN, 1);
+    gpio_put(LCD_BKL_PIN, 1);
+    gpio_put(SD_CS_PIN, 1);
+    // SPI Init
+    spi_init(spi1, DEFAULT_SPI_FREQ); // Init at 4 Mhz
+    gpio_set_function(LCD_MISO_PIN, GPIO_FUNC_SPI);
+    gpio_set_function(LCD_CLK_PIN, GPIO_FUNC_SPI);
+    gpio_set_function(LCD_MOSI_PIN, GPIO_FUNC_SPI);
+
+    // SD Init 
+    // 
+    // 
+
+    // LCD Reset
+    gpio_put(LCD_RST_PIN, 1);
+    sleep_ms(500);
+    gpio_put(LCD_RST_PIN, 0);
+    sleep_ms(500);
+    gpio_put(LCD_RST_PIN, 1);
+    sleep_ms(500);
+
+    _rowstart = (320 - height);
+    _rowstart2 = 0;
+    _colstart = _colstart2 = (240 - width);
+ 
     windowWidth = width;
     windowHeight = height;
 
