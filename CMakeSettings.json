@@ -1,0 +1,83 @@
+﻿{
+  "environments": [
+    {
+      "PICO_SDK_PATH": "T:/Repos/pico/pico-sdk",
+      "PICO_EXTRAS_PATH": "T:/Repos/pico/pico-extras",
+      "PICO_TOOLCHAIN_PATH": "C:/Program Files (x86)/Arm GNU Toolchain/11.2 2022.02/arm-none-eabi/bin/",
+      "CMAKE_MAKE_PROGRAM": "C:/msys64/mingw64/bin/make.exe",
+      "CMAKE_C_COMPILER": "C:/Program Files (x86)/Arm GNU Toolchain/11.2 2022.02/arm-none-eabi/bin/arm-none-eabi-gcc.exe",
+      "CMAKE_CXX_COMPILER": "C:/Program Files (x86)/Arm GNU Toolchain/11.2 2022.02/arm-none-eabi/bin/arm-none-eabi-g++.exe",
+      "PICO_PLATFORM": "rp2040",
+      "CMAKE_ROOT": "C:/Program Files/CMake/bin",
+      "environment": "gnu-gcc-arm"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Pico Debug",
+      "generator": "MinGW Makefiles",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\build\\install\\${name}",
+      "buildCommandArgs": "-j 512",
+      "ctestCommandArgs": "-DPICO_BOARD:STRING=adafruit_feather_rp2040 -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \"-DCMAKE_C_COMPILER:FILEPATH=C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-gcc.exe\" \"-DCMAKE_CXX_COMPILER:FILEPATH=C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-g++.exe\"",
+      "inheritEnvironments": [ "gnu-gcc-arm" ],
+      "variables": [
+        {
+          "name": "PICO_BOARD",
+          "value": "pico",
+          "type": "STRING"
+        },
+        {
+          "name": "PICO_STDIO_USB",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
+    },
+    {
+      "name": "Pico Release",
+      "generator": "MinGW Makefiles",
+      "configurationType": "Release",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\build\\install\\${name}",
+      "buildCommandArgs": "-j 512",
+      "ctestCommandArgs": "-DPICO_BOARD:STRING=adafruit_feather_rp2040 -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \"-DCMAKE_C_COMPILER:FILEPATH=C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-gcc.exe\" \"-DCMAKE_CXX_COMPILER:FILEPATH=C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-g++.exe\"",
+      "inheritEnvironments": [ "gnu-gcc-arm" ],
+      "variables": [
+        {
+          "name": "PICO_BOARD",
+          "value": "pico",
+          "type": "STRING"
+        },
+        {
+          "name": "PICO_STDIO_USB",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
+    },
+    {
+      "name": "Pico Build Only",
+      "generator": "MinGW Makefiles",
+      "configurationType": "Release",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\build\\install\\${name}",
+      "buildCommandArgs": "-j 512",
+      "ctestCommandArgs": "-DPICO_BOARD:STRING=adafruit_feather_rp2040 -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \"-DCMAKE_C_COMPILER:FILEPATH=C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-gcc.exe\" \"-DCMAKE_CXX_COMPILER:FILEPATH=C:\\Program Files (x86)\\GNU Arm Embedded Toolchain\\10 2021.10\\bin\\arm-none-eabi-g++.exe\"",
+      "inheritEnvironments": [ "gnu-gcc-arm" ],
+      "variables": [
+        {
+          "name": "PICO_BOARD",
+          "value": "pico",
+          "type": "STRING"
+        },
+        {
+          "name": "PICO_STDIO_USB",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
+    }
+  ]
+}
