@@ -16,6 +16,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/GFX-lib)
 
 # family_add_subdirectory will filter what to actually add based on selected FAMILY
 #family_add_subdirectory(midi)
-add_subdirectory(GFX-lib)
+add_subdirectory(TFTSDTouch)
 add_subdirectory(Examples)
 #add_subdirectory(Waveshare)
