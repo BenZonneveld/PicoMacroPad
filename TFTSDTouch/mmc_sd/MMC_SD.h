@@ -7,6 +7,8 @@
 #define _READONLY	0	/* 1: Read-only mode */
 #define _USE_IOCTL	1
 
+#define MMC_BAUDRATE 16000000
+
 #include "integer.h"
 
 /* Status of Disk Functions */
@@ -133,11 +135,11 @@ public:
     FRESULT f_mount(FATFS* fs, const TCHAR* path, BYTE opt);			/* Mount/Unmount a logical drive */
     FRESULT f_mkfs(const TCHAR* path, BYTE sfd, UINT au);				/* Create a file system on the volume */
     FRESULT f_fdisk(BYTE pdrv, const DWORD szt[], void* work);			/* Divide a physical drive into some partitions */
+    void SPI_SpeedLow(void);
+    void SPI_SpeedHigh(void);
 
 protected:
     uint8_t SPI_ReadWriteByte(uint8_t data);
-    void SPI_SpeedLow(void);
-    void SPI_SpeedHigh(void);
     uint8_t WaitReady(void);
     uint8_t GetResponse(uint8_t Response);
     uint8_t Initialize(void);
@@ -195,11 +197,12 @@ protected:
 
 protected:
     FATFS* microSDFatFs;
-    unsigned char* pDirectoryFiles[MAX_BMP_FILES];
-    uint8_t str[20];
-    unsigned char file_name[25][11];
+    uint   spi_baudrate;
 public:
     FRESULT f_res;
+    char* pDirectoryFiles[MAX_BMP_FILES];
+    uint8_t str[20];
+    char file_name[25][12];
 };
 
 #endif

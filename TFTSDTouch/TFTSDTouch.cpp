@@ -1,10 +1,11 @@
 #include <ff.h>
-//#include <diskio.h>
 #include <string.h>
 
 #include "GFX-lib/Adafruit_GFX.h"
 #include "GFX-lib/Adafruit_SPITFT.h"
 #include "mmc_sd/MMC_SD.h"
+//#include "ImageReader/ImageReader.h"
+#include "Touch/Touch.h"
 #include "TFTSDTouch.h"
 
 #define RGB24TORGB16(R,G,B) ((R>>3)<<11)|((G>>2)<<5)|(B>>3)
@@ -14,7 +15,8 @@ TFTSDTouch::TFTSDTouch()
 {
 	tft = Adafruit_SPITFT();
 	mmc = MMC_SD();
-
+	TP = cTouch();
+//	mmc.Init();
 }
 
 /**
@@ -28,107 +30,8 @@ TFTSDTouch::TFTSDTouch()
 
 uint32_t TFTSDTouch::OpenReadFile(uint8_t Xpoz, uint16_t Ypoz, const char* BmpName)
 {
-	uint16_t i, j, k, h;
-
-	uint32_t index = 0, size = 0, width = 0, height = 0;
-	uint32_t bmpaddress, bit_pixel = 0;
-	FIL file1;
-
-	mmc.f_open(&file1, BmpName, FA_READ);
-	mmc.f_read(&file1, aBuffer, 30, &BytesRead);
-
-	bmpaddress = (uint32_t)aBuffer;
-
-	/* Read bitmap size */
-	size = *(uint16_t*)(bmpaddress + 2);
-	size |= (*(uint16_t*)(bmpaddress + 4)) << 16;
-	//	printf("file size =  %d \r\n",size);
-		/* Get bitmap data address offset */
-	index = *(uint16_t*)(bmpaddress + 10);
-	index |= (*(uint16_t*)(bmpaddress + 12)) << 16;
-	// printf("file index =  %d \r\n",index);
-	/* Read bitmap width */
-	width = *(uint16_t*)(bmpaddress + 18);
-	width |= (*(uint16_t*)(bmpaddress + 20)) << 16;
-	// printf("file width =  %d \r\n",width);
-	/* Read bitmap height */
-	height = *(uint16_t*)(bmpaddress + 22);
-	height |= (*(uint16_t*)(bmpaddress + 24)) << 16;
-	// printf("file height =  %d \r\n",height);
-	/* Read bit/pixel */
-	bit_pixel = *(uint16_t*)(bmpaddress + 28);
-	//	printf("bit_pixel = %d \r\n",bit_pixel);
-	mmc.f_close(&file1);
-
-	if (24 != bit_pixel) {
-		return 0;
-	}
-
-	//	if (width != sLCD_DIS.LCD_Dis_Column || height != sLCD_DIS.LCD_Dis_Page) {
-			// printf("width != sLCD_DIS.LCD_Dis_Column \r\n");
-			// printf("file width =  %d \r\n",width);
-			// printf("file height =  %d \r\n",height);
-			// printf("sLCD_DIS.LCD_Dis_Column =  %d \r\n",sLCD_DIS.LCD_Dis_Column);
-			// printf("sLCD_DIS.LCD_Dis_Page =  %d \r\n",sLCD_DIS.LCD_Dis_Page);
-	return 1;
-	//	}
-
-		/* Synchronize f_read right in front of the image data */
-	mmc.f_open(&file1, (TCHAR const*)BmpName, FA_READ);
-	mmc.f_read(&file1, aBuffer, index, &BytesRead);
-
-	for (i = 0; i < height; i++) {
-		mmc.f_read(&file1, aBuffer, 360, (UINT*)&BytesRead);
-		mmc.f_read(&file1, aBuffer + 360, 360, (UINT*)&BytesRead);
-		for (j = 0; j < width; j++) {
-			k = j * 3;
-			pic[i * 240 + j] = (uint16_t)(((aBuffer[k + 2] >> 3) << 11) | ((aBuffer[k + 1] >> 2) << 5) | (aBuffer[k] >> 3));
-		}
-	}
-	/* LCD_SetCursor if dont write here ,it will display innormal*/
-//		LCD_SetCursor(0, 0);
-	gpio_put(LCD_DC_PIN, 1);
-	gpio_put(LCD_CS_PIN, 0);
-	spi_set_baudrate(spi1, 30 * 1000 * 1000);
-	for (index = 0; index < 76800; index++) {
-		mmc.SPI4W_Write_Byte((pic[index] >> 8) & 0xFF);
-		mmc.SPI4W_Write_Byte(pic[index] & 0xFF);
-	}
-	gpio_put(LCD_CS_PIN, 1);
-	mmc.f_close(&file1);
-	spi_set_baudrate(spi1, 3000 * 1000);
+//	reader.drawBMP(BmpName, tft, Xpoz, Ypoz);
 	sleep_ms(1500);
-	return 1;
-}
-
-
-/**
-* @brief  Copy file BmpName1 to BmpName2
-* @param  BmpName1: the source file name
-* @param  BmpName2: the destination file name
-* @retval err: Error status (0=> success, 1=> fail)
-*/
-uint32_t TFTSDTouch::CopyFile(const char* BmpName1, const char* BmpName2)
-{
-	uint32_t index = 0;
-	FIL file1, file2;
-
-	/* Open an Existent BMP file system */
-	mmc.f_open(&file1, BmpName1, FA_READ);
-	/* Create a new BMP file system */
-	mmc.f_open(&file2, BmpName2, FA_CREATE_ALWAYS | FA_WRITE);
-
-	do
-	{
-		mmc.f_read(&file1, aBuffer, _MAX_SS, &BytesRead);
-		mmc.f_write(&file2, aBuffer, _MAX_SS, &BytesWritten);
-		index += _MAX_SS;
-
-	} while (index < file1.fsize);
-
-	mmc.f_close(&file1);
-	mmc.f_close(&file2);
-
 	return 1;
 }
 
@@ -185,30 +88,6 @@ uint32_t TFTSDTouch::GetDirectoryBitmapFiles(const char* DirName, char* Files[])
 	return j;
 }
 
-/**
-  * @brief  Compares two buffers.
-  * @param  pBuffer1, pBuffer2: buffers to be compared
-  * @param  BufferLength: buffer's length
-  * @retval  0: pBuffer1 identical to pBuffer2
-  *          1: pBuffer1 differs from pBuffer2
-  */
-uint8_t TFTSDTouch::Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint16_t BufferLength)
-{
-	uint8_t ret = 1;
-	while (BufferLength--)
-	{
-		if (*pBuffer1 != *pBuffer2)
-		{
-			ret = 0;
-		}
-
-		pBuffer1++;
-		pBuffer2++;
-	}
-
-	return ret;
-}
-
 /********************************************************************************
 function:	Display the BMP picture in the SD card
 parameter:
@@ -245,14 +124,17 @@ void TFTSDTouch::Show_bmp(uint8_t Bmp_ScanDir, uint8_t Lcd_ScanDir) {
 	}
 
 	/* Get number of bitmap files */
-	filesnumbers = GetDirectoryBitmapFiles("/", pDirectoryFiles);
+	filesnumbers = GetDirectoryBitmapFiles("/", mmc.pDirectoryFiles);
 
 	/* Set bitmap counter to display first image */
 	bmpcounter = 1;
 
+	tft.print(filesnumbers);
+	tft.println(" files found.");
+
 	int showtime;
 	for (showtime = 0; showtime < filesnumbers; showtime++) {
-		sprintf((char*)str, "%-11.11s", pDirectoryFiles[bmpcounter - 1]);
+		sprintf((char*)str, "%-11.11s", mmc.pDirectoryFiles[bmpcounter - 1]);
 
 		checkstatus = CheckBitmapFile((const char*)str, &bmplen);
 
@@ -262,18 +144,23 @@ void TFTSDTouch::Show_bmp(uint8_t Bmp_ScanDir, uint8_t Lcd_ScanDir) {
 
 			/* Open the image and display the picture */
 			OpenReadFile(0, 0, (const char*)str);
+			tft.println((const char*)str);
 		}
 		else if (checkstatus == 1) {
 			/* Display message: SD card does not exist */
 			//Restore the default scan
-//			LCD_SetGramScanWay(Lcd_ScanDir);
+//			LCD_SetGramScanWay(Lcd_ScanDir); 
 //			GUI_DisString_EN(0, 64, "SD_CARD_NOT_FOUND", &Font24, LCD_BACKGROUND, BLUE);
+			tft.setCursor(0, 64);
+			tft.print("SD_CARD_NOT_FOUND");
 		}
 		else {
 			/* Display message: File not supported */
 			//Restore the default scan
 //			LCD_SetGramScanWay(Lcd_ScanDir);
 //			GUI_DisString_EN(0, 80, "SD_CARD_FILE_NOT_SUPPORTED", &Font24, LCD_BACKGROUND, BLUE);
+			tft.setCursor(0, 80);
+			tft.print("SD_CARD_FILE_NOT_SUPPORTED");
 		}
 
 		bmpcounter++;
@@ -288,3 +175,4 @@ void TFTSDTouch::Show_bmp(uint8_t Bmp_ScanDir, uint8_t Lcd_ScanDir) {
 	//	LCD_SetGramScanWay(Lcd_ScanDir);
 	gpio_put(SD_CS_PIN, 1);
 }
+
