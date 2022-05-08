@@ -29,18 +29,15 @@ unsigned char MMC_SD::SPI_ReadWriteByte(unsigned char CMD)
 //set spi in low speed mode.
 void MMC_SD::SPI_SpeedLow(void)
 {
-//	SPI1->CR1&=0XFFC7; 
-//	SPI1->CR1|=SPI_BaudRatePrescaler_256;
-//	SPI_Cmd(SPI1,ENABLE); 
+	spi_baudrate = spi_get_baudrate(spi1);
+	spi_set_baudrate(spi1, MMC_BAUDRATE);
 }
 
 
 //set spi in high speed mode.
 void MMC_SD::SPI_SpeedHigh(void)
 {
-//	SPI1->CR1&=0XFFC7; 
-//	SPI1->CR1|=SPI_BaudRatePrescaler_32;
-//	SPI_Cmd(SPI1,ENABLE); 
+	spi_set_baudrate(spi1, spi_baudrate);
 }
 
 
@@ -48,13 +45,14 @@ void MMC_SD::SPI_SpeedHigh(void)
 void MMC_SD::DisSelect(void)
 {
 	gpio_put(SD_CS_PIN,1);
- 	SPI_ReadWriteByte(0xff);//providing extra 8 clocks  
+	SPI_ReadWriteByte(0xff);//providing extra 8 clocks  
 }
 
 //pick sd card and waiting until until it's ready
 //return: 0: succed 1: failure
 unsigned char MMC_SD::Select(void)
 {
+	gpio_put(LCD_CS_PIN, 1);
 	gpio_put(SD_CS_PIN,0);
 	if(WaitReady()==0)return 0; 
 	DisSelect();
@@ -66,8 +64,10 @@ unsigned char MMC_SD::WaitReady(void)
 {
 	unsigned int t=0;
 	do{
-		if(SPI_ReadWriteByte(0XFF) == 0XFF)
+		if (SPI_ReadWriteByte(0XFF) == 0XFF)
+		{
 			return 0;
+		}
 		t++;		  	
 	}while(t<0XFFFFFF);
 	return 1;
@@ -359,7 +359,8 @@ void MMC_SD::Init(void) {
 	gpio_put(TP_CS_PIN, 1);
 
 	microSDFatFs = (FATFS*)malloc(sizeof(FATFS));
-
+	spi_baudrate = spi_get_baudrate(spi1);
+	SPI_SpeedLow();
 	int counter = 0;
 	//Check the mounted device
 	f_res = f_mount(microSDFatFs, (TCHAR const*)"/", 1);
@@ -374,4 +375,5 @@ void MMC_SD::Init(void) {
 			pDirectoryFiles[counter] = file_name[counter];
 		}
 	}
+	SPI_SpeedHigh();
 }

@@ -25,9 +25,22 @@
 #include "hardware/spi.h"
 
 // HARDWARE CONFIG ---------------------------------------------------------
-#define SPI_MHZ 80
+#define SPI_MHZ 16
 #define SPI_DEFAULT_FREQ (SPI_MHZ * 1000000) ///< Default SPI data clock frequency
 
+
+typedef enum {
+    L2R_U2D = 0,	//The display interface is displayed , left to right, up to down
+    L2R_D2U,
+    R2L_U2D,
+    R2L_D2U,
+
+    U2D_L2R,
+    U2D_R2L,
+    D2U_L2R,
+    D2U_R2L,
+} LCD_SCAN_DIR;
+#define SCAN_DIR_DFT  D2U_L2R  //Default scan direction = L2R_U2D
 
 
 // This is kind of a kludge. Needed a way to disambiguate the software SPI
@@ -311,14 +324,14 @@ private:
 #define ST77XX_RDID4 0xDD
 
 // Some ready-made 16-bit ('565') color settings:
-#define ST77XX_BLACK 0x0000
-#define ST77XX_WHITE 0xFFFF
-#define ST77XX_RED 0xF800
-#define ST77XX_GREEN 0x07E0
-#define ST77XX_BLUE 0x001F
-#define ST77XX_CYAN 0x07FF
-#define ST77XX_MAGENTA 0xF81F
-#define ST77XX_YELLOW 0xFFE0
-#define ST77XX_ORANGE 0xFC00
+#define BLACK 0x0000
+#define WHITE 0xFFFF
+#define RED 0xF800
+#define GREEN 0x07E0
+#define BLUE 0x001F
+#define CYAN 0x07FF
+#define MAGENTA 0xF81F
+#define YELLOW 0xFFE0
+#define ORANGE 0xFC00
 
 #endif // end _ADAFRUIT_SPITFT_H_

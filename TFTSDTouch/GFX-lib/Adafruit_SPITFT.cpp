@@ -118,6 +118,7 @@ void Adafruit_SPITFT::setSPISpeed(uint32_t freq) {
             for all display types; not an SPI-specific function.
 */
 void Adafruit_SPITFT::startWrite(void) {
+//    gpio_put(SD_CS_PIN, 1);
     SPI_CS_LOW();
 }
 
@@ -196,48 +197,35 @@ void Adafruit_SPITFT::swapBytes(uint16_t *src, uint32_t len, uint16_t *dest) {
                        big-endian, this can save time here, ESPECIALLY if
                        using this function's non-blocking DMA mode.
 */
-void Adafruit_SPITFT::writePixels(uint16_t *colors, uint32_t len, bool block,
-                                  bool bigEndian) {
-
-  if (!len)
-    return; // Avoid 0-byte transfers
-
-  // avoid paramater-not-used complaints
-  (void)block;
-  (void)bigEndian;
-
-  if (!bigEndian) {
-    // switch to 16-bit writes
-    hw_write_masked(&spi_get_hw(spi1)->cr0, 15 << SPI_SSPCR0_DSS_LSB,
-                    SPI_SSPCR0_DSS_BITS);
-    spi_write16_blocking(spi1, colors, len);
-    // switch back to 8-bit
-    hw_write_masked(&spi_get_hw(spi1)->cr0, 7 << SPI_SSPCR0_DSS_LSB,
-                    SPI_SSPCR0_DSS_BITS);
-  } else {
-    spi_write_blocking(spi1, (uint8_t *)colors, len * 2);
-  }
-  return;
-
-  // All other cases (bitbang SPI or non-DMA hard SPI or parallel),
-  // use a loop with the normal 16-bit data write function:
-
-  if (!bigEndian) {
-    while (len--) {
-      SPI_WRITE16(*colors++);
+void Adafruit_SPITFT::writePixels(uint16_t* colors, uint32_t len, bool block,
+    bool bigEndian) {
+    startWrite();
+    if (!len)
+    {
+        endWrite();
+        return; // Avoid 0-byte transfers
     }
-  } else {
-    // Well this is awkward. SPI_WRITE16() was designed for little-endian
-    // hosts and big-endian displays as that's nearly always the typical
-    // case. If the bigEndian flag was set, data is already in display's
-    // order...so each pixel needs byte-swapping before being issued.
-    // Rather than having a separate big-endian SPI_WRITE16 (adding more
-    // bloat), it's preferred if calling function is smart and only uses
-    // bigEndian where DMA is supported. But we gotta handle this...
-    while (len--) {
-      SPI_WRITE16(__builtin_bswap16(*colors++));
-    }
-  }
+      // avoid paramater-not-used complaints
+    //(void)block;
+    //(void)bigEndian;
+
+//    if (!bigEndian) {
+        // switch to 16-bit writes
+//        hw_write_masked(&spi_get_hw(spi1)->cr0, 15 << SPI_SSPCR0_DSS_LSB,
+//            SPI_SSPCR0_DSS_BITS);
+        spi_set_format(spi1, 16, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
+        spi_write16_blocking(spi1, colors, len);
+        spi_set_format(spi1, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
+        // switch back to 8-bit
+//        hw_write_masked(&spi_get_hw(spi1)->cr0, 7 << SPI_SSPCR0_DSS_LSB,
+//            SPI_SSPCR0_DSS_BITS);
+//    }
+//    else {
+//    uint8_t rxDat;
+//        spi_write_blocking(spi1, (uint8_t*)colors,len * 2);
+//    }
+    endWrite();
+    return;
 }
 
 /*!
@@ -926,6 +914,7 @@ void Adafruit_SPITFT::displayInit(const uint8_t* addr) {
     gpio_set_dir(LCD_BKL_PIN, GPIO_OUT);
     gpio_put(LCD_BKL_PIN, 1);
 
+    startWrite();
     numCommands = *(addr++); // Number of commands to follow
     while (numCommands--) {              // For each command...
         cmd = *(addr++);       // Read command
@@ -942,6 +931,7 @@ void Adafruit_SPITFT::displayInit(const uint8_t* addr) {
             sleep_ms(ms);
         }
     }
+    endWrite();
 }
 
 /**************************************************************************/
@@ -955,7 +945,8 @@ void Adafruit_SPITFT::displayInit(const uint8_t* addr) {
 /**************************************************************************/
 void Adafruit_SPITFT::setAddrWindow(uint16_t x, uint16_t y, uint16_t w,
     uint16_t h) {
-    x += _xstart;
+    startWrite();
+   x += _xstart;
     y += _ystart;
     uint32_t xa = ((uint32_t)x << 16) | (x + w - 1);
     uint32_t ya = ((uint32_t)y << 16) | (y + h - 1);
@@ -967,6 +958,7 @@ void Adafruit_SPITFT::setAddrWindow(uint16_t x, uint16_t y, uint16_t w,
     SPI_WRITE32(ya);
 
     writeCommand(ST77XX_RAMWR); // write to RAM
+    endWrite();
 }
 
 /**************************************************************************/
@@ -988,7 +980,9 @@ void Adafruit_SPITFT::setColRowStart(int8_t col, int8_t row) {
  */
  /**************************************************************************/
 void Adafruit_SPITFT::enableDisplay(bool enable) {
+    startWrite();
     sendCommand(enable ? ST77XX_DISPON : ST77XX_DISPOFF);
+    endWrite();
 }
 
 /**************************************************************************/
@@ -998,7 +992,9 @@ void Adafruit_SPITFT::enableDisplay(bool enable) {
  */
  /**************************************************************************/
 void Adafruit_SPITFT::enableTearing(bool enable) {
+    startWrite();
     sendCommand(enable ? ST77XX_TEON : ST77XX_TEOFF);
+    endWrite();
 }
 
 /**************************************************************************/
@@ -1008,7 +1004,9 @@ void Adafruit_SPITFT::enableTearing(bool enable) {
  */
  /**************************************************************************/
 void Adafruit_SPITFT::enableSleep(bool enable) {
+    startWrite();
     sendCommand(enable ? ST77XX_SLPIN : ST77XX_SLPOUT);
+    endWrite();
 }
 
  // SCREEN INITIALIZATION ***************************************************
@@ -1032,32 +1030,32 @@ static const uint8_t st7789[] = {                // Init commands for 7789 scree
      0x33,
      0x33,
      10,
-    GCTRL , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0x35,                         //     16-bit color
-      10,                           //     10 ms delay
-    VCOMS , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0x28,                         //     16-bit color
-      10,                           //     10 ms delay
-    LCMCTRL , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0x3c,                         //     16-bit color
-      10,                           //     10 ms delay
-    VDVVRHEN , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0x01,                         //     16-bit color
-      10,                           //     10 ms delay
-    VRHS , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0x0b,                         //     16-bit color
-      10,                           //     10 ms delay
-    VDVS , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0x20,                         //     16-bit color
-      10,                           //     10 ms delay
-    FRCTRL2 , 1 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0x0f,                         //     16-bit color
-      10,                           //     10 ms delay
-    PWCTRL1 , 2 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
-      0xa4,                         //     16-bit color
+    GCTRL , 1 + ST_CMD_DELAY, 
+      0x35,                         
+      10,                           
+    VCOMS , 1 + ST_CMD_DELAY, 
+      0x28,                         
+      10,                           
+    LCMCTRL , 1 + ST_CMD_DELAY, 
+      0x3c,                         
+      10,                           
+    VDVVRHEN , 1 + ST_CMD_DELAY, 
+      0x01,                         
+      10,                           
+    VRHS , 1 + ST_CMD_DELAY, 
+      0x0b,                         
+      10,                           
+    VDVS , 1 + ST_CMD_DELAY, 
+      0x20,                         
+      10,                           
+    FRCTRL2 , 1 + ST_CMD_DELAY, 
+      0x0f,                         
+      10,                           
+    PWCTRL1 , 2 + ST_CMD_DELAY, 
+      0xa4,                         
       0xa1,
-      10,                           //     10 ms delay
-    PVGAMCTRL , 14 + ST_CMD_DELAY, //  3: Set color mode, 1 arg + delay:
+      10,                           
+    PVGAMCTRL , 14 + ST_CMD_DELAY, 
       0xd0,
       0x01,
       0x08,
@@ -1094,7 +1092,7 @@ static const uint8_t st7789[] = {                // Init commands for 7789 scree
     10,
     ST77XX_DISPON ,   ST_CMD_DELAY, //  9: Main screen turn on, no args, delay
       10
-};                          //    10 ms delay
+};
 
 // clang-format on
 
