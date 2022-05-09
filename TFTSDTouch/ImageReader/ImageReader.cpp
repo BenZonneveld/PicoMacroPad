@@ -370,7 +370,6 @@ ImageReturnCode ImageReader::coreBMP(
         bmpHeight = readLE32();
         // If bmpHeight is negative, image is in top-down order.
         // This is not canon but has been observed in the wild.
-        printf("offset: %i\r\n", offset);
         if (bmpHeight < 0) {
             bmpHeight = -bmpHeight;
             flip = false;
@@ -392,30 +391,29 @@ ImageReturnCode ImageReader::coreBMP(
 
         loadWidth = bmpWidth;
         loadHeight = bmpHeight;
-        printf("loadWidth: %i LoadHeight: %i\r\n", loadWidth, loadHeight);
         loadX = 0;
         loadY = 0;
 
 //        filesys->f_close(&file);
 //        filesys->f_open(&file, filename, FA_READ);
 //        filesys->f_lseek(&file, offset - 1);
-        //if (tft) {
-        //    // Crop area to be loaded (if destination is TFT)
-        //    if (x < 0) {
-        //        loadX = -x;
-        //        loadWidth += x;
-        //        x = 0;
-        //    }
-        //    if (y < 0) {
-        //        loadY = -y;
-        //        loadHeight += y;
-        //        y = 0;
-        //    }
-        //    if ((x + loadWidth) > tft->width())
-        //        loadWidth = tft->width() - x;
-        //    if ((y + loadHeight) > tft->height())
-        //        loadHeight = tft->height() - y;
-        //}
+        if (tft) {
+            // Crop area to be loaded (if destination is TFT)
+            if (x < 0) {
+                loadX = -x;
+                loadWidth += x;
+                x = 0;
+            }
+            if (y < 0) {
+                loadY = -y;
+                loadHeight += y;
+                y = 0;
+            }
+            if ((x + loadWidth) > tft->width())
+                loadWidth = tft->width() - x;
+            if ((y + loadHeight) > tft->height())
+                loadHeight = tft->height() - y;
+        }
 
 //        printf("loadWidth: %i LoadHeight: %i\r\n", loadWidth, loadHeight);
 
@@ -424,7 +422,7 @@ ImageReturnCode ImageReader::coreBMP(
           // BMP rows are padded (if needed) to 4-byte boundary
             rowSize = ((depth * bmpWidth + 31) / 32) * 4;
 
-  //          printf("rowSize: %i\r\n", rowSize);
+//            printf("rowSize: %i\r\n", rowSize);
 
             if ((depth == 24) || (depth == 1)) { // BGR or 1-bit bitmap format
 
@@ -449,7 +447,7 @@ ImageReturnCode ImageReader::coreBMP(
 
                     if ((loadWidth > 0) && (loadHeight > 0)) { // Clip top/left
                         if (tft) {
-                            tft->setAddrWindow(x, y, tft->width(), tft->height());
+                            tft->setAddrWindow(x, y, loadWidth, loadHeight);
                             //              tft->setCursor(x, y);
                         }
                         else {
@@ -528,18 +526,7 @@ ImageReturnCode ImageReader::coreBMP(
                                         srcidx += 3;
                                     }
                                 }                // end pixel loop
-                                printf("dstidx: %i\r\n", destidx);
                                 if (tft) {       // Drawing to TFT?
-                                    //if (depth == 24)
-                                    //{
-                                    //    uint16_t k;
-                                    //    for (uint16_t j = 0; j < BytesRead; j++)
-                                    //    {
-                                    //        k = j * 3;
-                                    // //       dest[j] = (uint16_t)(((sdbuf[k + 2] >> 3) << 11) | ((sdbuf[k + 1] >> 2) << 5) | (sdbuf[k] >> 3));
-                                    //        tft->writePixels(&dest[j], 1, true, false);
-                                    //    }
-                                    //}
                                     if (destidx) { // Any remainders?
                                     //  // See notes above re: DMA
                                         tft->writePixels(&dest[0], destidx, true, false); // Write it

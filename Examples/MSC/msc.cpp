@@ -7,11 +7,11 @@
 #include "bsp/board.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
-#include "touchTest.h"
 
 #include "Adafruit_GFX.h"    // Core graphics library
 #include "Adafruit_SPITFT.h" // Hardware-specific library for ST7789
-#include "TFTSDTouch.h"
+#include "msc.h"
+//#include "TFTSDTouch.h"
 #include "ImageReader/ImageReader.h"
 
 //Adafruit_SPITFT tft = Adafruit_SPITFT(240,320);
@@ -38,7 +38,7 @@ int main(void) {
 //    Serial.begin(9600);
 //   sleep_ms(5000);
     printf("Hello! ST77xx TFT Test\r\n");
-
+    tusb_init();
     device.tft.init(240, 320);           // Init ST7789 320x240
 
     device.mmc.Init();
@@ -54,25 +54,23 @@ int main(void) {
     device.tft.setCursor(0, 9);
     device.tft.setTextSize(2);
     device.tft.println("Trying to read from SD");
-//    
+
     int32_t w, h = 0;
-    device.tft.setRotation(0);
-//    device.OpenReadFile(0, 0, "FLOWER.BMP");
-//    device.Show_bmp(L2R_D2U, L2R_D2U);
-    uint8_t state = reader.drawBMP("flower.bmp", device.tft, 0, 0);
-//    device.tft.println(reader.printStatus((ImageReturnCode)state));
+
+    uint8_t state = reader.drawBMP("cubase.bmp", device.tft, 14, 14);
 
     printf("Initialized\r\n");
     device.tft.setRotation(L2R_D2U);
 
-//    uint8_t i = 0;
     uint16_t x = 10, y = 10;
-    device.tft.fillRoundRect(x, y, BUTSIZE, BUTSIZE,8, WHITE);
+    device.tft.drawRoundRect(x, y, BUTSIZE, BUTSIZE,8, WHITE);
     x = 250, y = 10;
-    device.tft.fillRoundRect(x, y, BUTSIZE, BUTSIZE, 8, WHITE);
+    device.tft.drawRoundRect(x, y, BUTSIZE, BUTSIZE, 8, WHITE);
 
     while(1)
     {
+        tud_task();
+        hid_task();
         device.TP.Scan();
         if (device.TP.status().chStatus & TP_PRESS_DOWN)
         {
@@ -140,7 +138,6 @@ void hid_task(void)
     start_ms += interval_ms;
 
     uint32_t const btn = board_button_read();
-
     if (tud_suspended() && btn)
     {
         // Wake up host if we are in suspend mode

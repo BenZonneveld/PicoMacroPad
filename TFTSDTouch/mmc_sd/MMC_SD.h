@@ -137,15 +137,15 @@ public:
     FRESULT f_fdisk(BYTE pdrv, const DWORD szt[], void* work);			/* Divide a physical drive into some partitions */
     void SPI_SpeedLow(void);
     void SPI_SpeedHigh(void);
-
+    uint8_t ReadDisk(uint8_t* buf, uint32_t sector, uint8_t cnt);
+    uint8_t WriteDisk(uint8_t* buf, uint32_t sector, uint8_t cnt);
+    uint32_t GetSectorCount(void);
 protected:
+    
     uint8_t SPI_ReadWriteByte(uint8_t data);
     uint8_t WaitReady(void);
     uint8_t GetResponse(uint8_t Response);
     uint8_t Initialize(void);
-    uint8_t ReadDisk(uint8_t* buf, uint32_t sector, uint8_t cnt);
-    uint8_t WriteDisk(uint8_t* buf, uint32_t sector, uint8_t cnt);
-    uint32_t GetSectorCount(void);
     uint8_t GetCID(uint8_t* cid_data);
     uint8_t GetCSD(uint8_t* csd_data);
     void DisSelect(void);

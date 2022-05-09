@@ -53,6 +53,7 @@ void MMC_SD::DisSelect(void)
 unsigned char MMC_SD::Select(void)
 {
 	gpio_put(LCD_CS_PIN, 1);
+	gpio_put(TP_CS_PIN, 1);
 	gpio_put(SD_CS_PIN,0);
 	if(WaitReady()==0)return 0; 
 	DisSelect();
@@ -196,7 +197,7 @@ uint32_t MMC_SD::GetSectorCount(void)
     unsigned int Capacity;  
     unsigned char n;
 	unsigned short csize;  					    
-	
+	Select();
     if(GetCSD(csd)!=0) return 0;	    
     //calculation for SDHC below
     if((csd[0]&0xC0)==0x40)	 //V2.00
@@ -209,6 +210,7 @@ uint32_t MMC_SD::GetSectorCount(void)
 		csize = (csd[8] >> 6) + ((unsigned short)csd[7] << 2) + ((unsigned short)(csd[6] & 3) << 10) + 1;
 		Capacity= (unsigned int)csize << (n - 9); 
     }
+	DisSelect();
     return Capacity;
 }
 
@@ -290,6 +292,8 @@ unsigned char MMC_SD::Initialize(void)
 //return: 0 ok, other for failure
 uint8_t MMC_SD::ReadDisk(uint8_t *buf,uint32_t sector,uint8_t cnt)
 {
+	Select();
+//	printf("Sector: %lu\r\n", sector);
 	unsigned char r1;
 	if(SD_Type!=SD_TYPE_V2HC)sector <<= 9;
 	if(cnt==1)
@@ -309,6 +313,26 @@ uint8_t MMC_SD::ReadDisk(uint8_t *buf,uint32_t sector,uint8_t cnt)
 		}while(--cnt && r1==0); 	
 		SendCmd(CMD12,0,0X01);	
 	}   
+	//if (sector == 0)
+	//{
+	//	for (uint16_t i = 0; i < 512; i++)
+	//	{
+	//		if (i % 16 == 0)
+	//		{
+	//			printf("%.08X: ", i);
+	//		}
+	//		printf("%.02X ", buf[i]);
+	//		if (buf[i] > 0x20 && buf[i] < 0x80)
+	//		{
+	//			printf("%s ", buf[i]);
+	//		}
+	//		if (i % 16 == 15)
+	//		{
+	//			printf("\r\n");
+	//		}
+	//	}
+	//}
+
 	DisSelect();
 	return r1;//
 }
@@ -321,6 +345,7 @@ uint8_t MMC_SD::ReadDisk(uint8_t *buf,uint32_t sector,uint8_t cnt)
 //return: 0 ok, other for failure
 uint8_t MMC_SD::WriteDisk(uint8_t *buf,uint32_t sector,uint8_t cnt)
 {
+	Select();
 	unsigned char r1;
 	if(SD_Type!=SD_TYPE_V2HC)sector *= 512;
 	if(cnt==1)

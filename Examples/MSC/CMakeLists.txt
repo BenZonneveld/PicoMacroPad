@@ -28,11 +28,12 @@ target_include_directories(${PROJECT} PUBLIC
 )        
 
 target_sources(${PROJECT} PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/touchTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/msc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/msc_disk.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
 )
 
-pico_set_program_name(${PROJECT} "msc+hid")
+pico_set_program_name(${PROJECT} "sdcard")
 pico_set_program_version(${PROJECT} "0.1")
 
 # Enable usb output, disable uart output
