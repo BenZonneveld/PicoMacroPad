@@ -8,6 +8,10 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 
+#include "reader.h" // JSON Reader
+#include "filereadstream.h"
+#include "document.h"
+
 #include "Adafruit_GFX.h"    // Core graphics library
 #include "Adafruit_SPITFT.h" // Hardware-specific library for ST7789
 #include "msc.h"
@@ -18,8 +22,10 @@
 TFTSDTouch device = TFTSDTouch();
 
 #define BUTSIZE 64
+#define SPACING 25
 float p = 3.1415926;
 
+using namespace rapidjson;
 uint32_t millis()
 {
     return to_ms_since_boot(get_absolute_time());
@@ -32,8 +38,20 @@ bool isInside(uint16_t x, uint16_t y, uint16_t sz, uint16_t xpoint, uint16_t ypo
     return 0;
 }
 
-int main(void) {
+void CreateShortCut(ImageReader* reader, uint8_t pos, const char* icon, const char* name)
+{
+    uint8_t state = reader->drawBMP(icon, device.tft, 15 + (BUTSIZE + SPACING) * pos , 20);
+    device.tft.drawRoundRect(10 + ((BUTSIZE + SPACING) * pos), 14, BUTSIZE, BUTSIZE, 8, WHITE);
+    device.tft.setCursor(10 + ((BUTSIZE + SPACING) * pos), 14 + BUTSIZE);
+    device.tft.setTextSize(1);
+    device.tft.setTextColor(WHITE);
+    device.tft.print(name);
+}
 
+int main(void) {
+    uint8_t NoOfButtons = 0;
+    bool Pressed = false;
+    Document doc;
     stdio_init_all();
 //    Serial.begin(9600);
 //   sleep_ms(5000);
@@ -44,28 +62,67 @@ int main(void) {
     device.mmc.Init();
 
     device.tft.setRotation(L2R_D2U);
-    device.tft.fillScreen(BLACK);
+    device.tft.fillScreen(BLUE);
 
     device.TP.Init(&device.tft);
     ImageReader reader(device.mmc);
 
     device.TP.GetAdFac(); 
 //    device.TP.Adjust();
-    device.tft.setCursor(0, 9);
-    device.tft.setTextSize(2);
-    device.tft.println("Trying to read from SD");
+    device.tft.setCursor(0, 100);
+    device.tft.setTextSize(3);
+    device.tft.println("STARTING UP");
 
-    int32_t w, h = 0;
+    FIL fp;
+    uint8_t res = device.mmc.f_open(&fp,(char*)"macro.jsn", FA_READ);
+    printf("res: %i\r\n", res);
+    char macrobuf[65535] = {0};
+    UINT bread = 0;
+    if (res == 0)
+    {
+        device.mmc.f_read(&fp, macrobuf, 65535, &bread);
+     //   printf("Bytes read: %i\r\n", bread);
+     //   printf("Macrobuf: %s\r\n", macrobuf);
+    }
+    device.mmc.f_close(&fp);
 
-    uint8_t state = reader.drawBMP("cubase.bmp", device.tft, 14, 14);
+    device.tft.fillScreen(BLACK);
+
+    doc.Parse(macrobuf);
+
+    assert(doc.HasMember("button"));
+    const Value& buttons = doc["button"];
+    assert(buttons.IsArray());
+    for (SizeType i = 0; i < buttons.Size(); i++) // Uses SizeType instead of size_t
+    {
+        const Value& but = buttons[i];
+//        but.SetObject();
+        assert(but.IsArray());
+        assert(but.HasMember["pos"]);
+        assert(but["pos".IsInt()]);
+        assert(but.HasMember["icon"]);
+        assert(but["icon"].IsString());
+        assert(but.HasMember["name"]);
+        assert(but["name"].IsString());
+        assert(but.HasMember["keys"]);
+        assert(but["keys"].IsArray());
+
+//        printf("Pos: %i\r\n", but["pos"].GetInt());
+//        printf("Icon: %s\r\n", but["icon"].GetString());
+        printf("name: %s\r\n", but["name"].GetString());
+//        printf("keys: %s\r\n", but["keys"].GetArray());
+        //        
+        CreateShortCut(&reader, i, but["icon"].GetString(), but["name"].GetString());
+    }
+    NoOfButtons = buttons.Size();
 
     printf("Initialized\r\n");
     device.tft.setRotation(L2R_D2U);
 
-    uint16_t x = 10, y = 10;
-    device.tft.drawRoundRect(x, y, BUTSIZE, BUTSIZE,8, WHITE);
-    x = 250, y = 10;
-    device.tft.drawRoundRect(x, y, BUTSIZE, BUTSIZE, 8, WHITE);
+//    uint16_t x = 10, y = 10;
+//    device.tft.drawRoundRect(x, y, BUTSIZE, BUTSIZE,8, WHITE);
+//    x = 250, y = 10;
+//    device.tft.drawRoundRect(x, y, BUTSIZE, BUTSIZE, 8, WHITE);
 
     while(1)
     {
@@ -76,14 +133,32 @@ int main(void) {
         {
             uint16_t xpoint = device.TP.DrawPoint().Xpoint;
             uint16_t ypoint = device.TP.DrawPoint().Ypoint;
-            if (isInside(10, 10, BUTSIZE, xpoint, ypoint))
+            for (uint8_t i = 0; i < NoOfButtons; i++)
             {
-                device.tft.invertDisplay(true);
+                const Value& but = buttons[i];
+                assert(but.IsArray());
+//                assert(but.HasMember["pos"]);
+//                assert(but["pos".IsInt()]);
+//                assert(but.HasMember["icon"]);
+//                assert(but["icon"].IsString());
+                 assert(but.HasMember["name"]);
+                assert(but["name"].IsString());
+                assert(but.HasMember["keys"]);
+                assert(but["keys"].IsArray());
+//                10 + ((BUTSIZE + SPACING) * pos), 14
+                if (isInside(10 + ((BUTSIZE + SPACING) * i), 14, BUTSIZE, xpoint, ypoint) && !Pressed )
+                {
+                    printf("%i\r\n",i);
+                    printf("%s\r\n", but["name"].GetString());
+                    Pressed = true;
+//                    device.tft.invertDisplay(true);
+//                    sleep_ms(250);
+//                    device.tft.invertDisplay(false);
+                }
             }
-            if (isInside(320-BUTSIZE-10, 10, BUTSIZE, xpoint, ypoint))
-            {
-                device.tft.invertDisplay(false);
-            }
+        }
+        else {
+            Pressed = false;
         }
         ;
     }

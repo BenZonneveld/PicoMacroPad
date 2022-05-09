@@ -10,7 +10,7 @@ set(FAMILY rp2040)
 set(BOARD raspberry_pi_pico)
 set(PICO_BOARD pico)
 
-#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/GFX-lib)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/rapidjson)
 
 #family_initialize_project(TFT_Screen ${CMAKE_CURRENT_LIST_DIR})
 

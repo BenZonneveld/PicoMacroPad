@@ -158,7 +158,7 @@
 /  should be added to the disk_ioctl() function. */
 
 
-#define _FS_NOFSINFO    0 /* 0 or 1 */
+#define _FS_NOFSINFO    1 /* 0 or 1 */
 /* If you need to know the correct free space on the FAT32 volume, set this
 /  option to 1 and f_getfree() function at first time after volume mount will
 /  force a full FAT scan.
