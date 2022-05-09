@@ -82,6 +82,7 @@ protected:
                           Image *img);
   uint16_t readLE16(void);
   uint32_t readLE32(void);
+  UINT BytesRead;
 };
 
 #endif // __Image_READER_H__

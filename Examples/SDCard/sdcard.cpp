@@ -12,6 +12,7 @@
 #include "Adafruit_GFX.h"    // Core graphics library
 #include "Adafruit_SPITFT.h" // Hardware-specific library for ST7789
 #include "TFTSDTouch.h"
+#include "ImageReader/ImageReader.h"
 
 //Adafruit_SPITFT tft = Adafruit_SPITFT(240,320);
 TFTSDTouch device = TFTSDTouch();
@@ -27,18 +28,24 @@ int main(void) {
 
     stdio_init_all();
 //    Serial.begin(9600);
-    sleep_ms(5000);
+//   sleep_ms(5000);
     printf("Hello! ST77xx TFT Test\r\n");
 
     device.tft.init(240, 320);           // Init ST7789 320x240
     device.mmc.Init();
+    ImageReader reader(device.mmc);
     device.tft.setRotation(1);
     device.tft.fillScreen(ST77XX_BLACK);
 
-    device.tft.setCursor(12, 12);
+    device.tft.setCursor(0, 9);
     device.tft.setTextSize(2);
     device.tft.println("Trying to read from SD");
-    device.Show_bmp(0, 0);
+
+    int32_t w, h = 0;
+  
+    uint8_t state = reader.drawBMP("tiger.bmp", device.tft, 0, 0);
+    device.tft.println(reader.printStatus((ImageReturnCode)state));
+//    device.Show_bmp(0, 0);
     // SPI speed defaults to SPI_DEFAULT_FREQ defined in the library, you can override it here
     // Note that speed allowable depends on chip and quality of wiring, if you go too fast, you
     // may end up with a black screen some times, or all the time.

@@ -47,19 +47,29 @@ int main(void) {
     device.tft.fillScreen(BLACK);
 
     device.TP.Init(&device.tft);
-//    ImageReader reader(device.mmc);
+    ImageReader reader(device.mmc);
+
     device.TP.GetAdFac(); 
 //    device.TP.Adjust();
     device.tft.setCursor(0, 9);
     device.tft.setTextSize(2);
     device.tft.println("Trying to read from SD");
 //    
+    int32_t w, h = 0;
+    device.tft.setRotation(0);
+    device.OpenReadFile(0, 0, "FLOWER.BMP");
+//    device.Show_bmp(L2R_D2U, L2R_D2U);
+//    uint8_t state = reader.drawBMP("flower.bmp", device.tft, 0, 0);
+//    device.tft.println(reader.printStatus((ImageReturnCode)state));
 
     printf("Initialized\r\n");
+    device.tft.setRotation(L2R_D2U);
 
 //    uint8_t i = 0;
     uint16_t x = 10, y = 10;
-    device.tft.fillRoundRect(x, y, x + BUTSIZE, y + BUTSIZE,8, WHITE);
+    device.tft.fillRoundRect(x, y, BUTSIZE, BUTSIZE,8, WHITE);
+    x = 250, y = 10;
+    device.tft.fillRoundRect(x, y, BUTSIZE, BUTSIZE, 8, WHITE);
 
     while(1)
     {
@@ -68,15 +78,12 @@ int main(void) {
         {
             uint16_t xpoint = device.TP.DrawPoint().Xpoint;
             uint16_t ypoint = device.TP.DrawPoint().Ypoint;
-            device.tft.setCursor(0, 100);
-            device.tft.fillRect(0, 100, 320, 140, BLACK);
-            device.tft.println("Touched");
-            device.tft.print("XPoint: "); device.tft.println(xpoint, DEC);
-            device.tft.print("YPoint: "); device.tft.println(ypoint, DEC);
             if (isInside(10, 10, 50, xpoint, ypoint))
             {
                 device.tft.invertDisplay(true);
-                sleep_ms(50);
+            }
+            if (isInside(250, 10, 50, xpoint, ypoint))
+            {
                 device.tft.invertDisplay(false);
             }
         }

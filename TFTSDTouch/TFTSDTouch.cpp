@@ -30,8 +30,80 @@ TFTSDTouch::TFTSDTouch()
 
 uint32_t TFTSDTouch::OpenReadFile(uint8_t Xpoz, uint16_t Ypoz, const char* BmpName)
 {
-//	reader.drawBMP(BmpName, tft, Xpoz, Ypoz);
-	sleep_ms(1500);
+	uint16_t i, j, k, h;
+
+	uint32_t index = 0, size = 0, width = 0, height = 0;
+	uint32_t bmpaddress, bit_pixel = 0;
+	FIL file1;
+
+	printf("OpenReadFile: %s\r\n", BmpName);
+	mmc.f_open(&file1, BmpName, FA_READ);
+	mmc.f_read(&file1, aBuffer, 30, &BytesRead);
+
+	bmpaddress = (uint32_t)aBuffer;
+
+	/* Read bitmap size */
+	size = *(uint16_t*)(bmpaddress + 2);
+	size |= (*(uint16_t*)(bmpaddress + 4)) << 16;
+	//	printf("file size =  %d \r\n",size);
+		/* Get bitmap data address offset */
+	index = *(uint16_t*)(bmpaddress + 10);
+	index |= (*(uint16_t*)(bmpaddress + 12)) << 16;
+	printf("index: %i\r\n", index);
+	// printf("file index =  %d \r\n",index);
+	/* Read bitmap width */
+	width = *(uint16_t*)(bmpaddress + 18);
+	width |= (*(uint16_t*)(bmpaddress + 20)) << 16;
+	// printf("file width =  %d \r\n",width);
+	/* Read bitmap height */
+	height = *(uint16_t*)(bmpaddress + 22);
+	height |= (*(uint16_t*)(bmpaddress + 24)) << 16;
+	// printf("file height =  %d \r\n",height);
+	/* Read bit/pixel */
+	bit_pixel = *(uint16_t*)(bmpaddress + 28);
+	//	printf("bit_pixel = %d \r\n",bit_pixel);
+	mmc.f_close(&file1);
+
+	if (24 != bit_pixel) {
+		printf("Not 24 bit\r\n");
+		return 0;
+	}
+
+	if (width != tft.width() || height != tft.height()) {
+		// printf("width != sLCD_DIS.LCD_Dis_Column \r\n");
+		// printf("file width =  %d \r\n",width);
+		// printf("file height =  %d \r\n",height);
+		// printf("sLCD_DIS.LCD_Dis_Column =  %d \r\n",sLCD_DIS.LCD_Dis_Column);
+		// printf("sLCD_DIS.LCD_Dis_Page =  %d \r\n",sLCD_DIS.LCD_Dis_Page);
+		printf("file too width %i > %i or heigh %i > %i\r\n", width, tft.width(), height, tft.height());
+		return 1;
+	}
+
+	/* Synchronize f_read right in front of the image data */
+	mmc.f_open(&file1, (TCHAR const*)BmpName, FA_READ);
+	mmc.f_read(&file1, aBuffer, index, &BytesRead);
+
+	printf("width %i heigh %i\r\n", width, height);
+
+	for (i = 0; i < height; i++) {
+		mmc.f_read(&file1, aBuffer, 720, (UINT*)&BytesRead);
+//		mmc.f_read(&file1, aBuffer + 360, 360, (UINT*)&BytesRead);
+		for (j = 0; j < width; j++) {
+			k = j * 3;
+			pic[i * 240 + j] = (uint16_t)(((aBuffer[k + 2] >> 3) << 11) | ((aBuffer[k + 1] >> 2) << 5) | (aBuffer[k] >> 3));
+		}
+	}
+	/* LCD_SetCursor if dont write here ,it will display innormal*/
+	spi_set_baudrate(spi1, 80 * 1000 * 1000);
+	printf("mmc SPI4W_Write_Byte\r\n");
+	tft.setAddrWindow(0, 0, tft.width(), tft.height());
+	for (index = 0; index < 76800; index++) {
+//		printf("%.02X", pic[index] & 0xFF);
+		tft.writePixels(&pic[index], 1, true, false);
+	}
+//	gpio_put(LCD_CS_PIN, 1);
+	mmc.f_close(&file1);
+	spi_set_baudrate(spi1, 3000 * 1000);
 	return 1;
 }
 
@@ -127,7 +199,7 @@ void TFTSDTouch::Show_bmp(uint8_t Bmp_ScanDir, uint8_t Lcd_ScanDir) {
 	filesnumbers = GetDirectoryBitmapFiles("/", mmc.pDirectoryFiles);
 
 	/* Set bitmap counter to display first image */
-	bmpcounter = 1;
+	bmpcounter = 2;
 
 	tft.print(filesnumbers);
 	tft.println(" files found.");
@@ -138,27 +210,24 @@ void TFTSDTouch::Show_bmp(uint8_t Bmp_ScanDir, uint8_t Lcd_ScanDir) {
 
 		checkstatus = CheckBitmapFile((const char*)str, &bmplen);
 
+		printf("checkstatus : %i\r\n", checkstatus);
+
 		if (checkstatus == 0) {
 			//Display the scan of the picture
-			//LCD_SetGramScanWay(Bmp_ScanDir);
-
 			/* Open the image and display the picture */
-			OpenReadFile(0, 0, (const char*)str);
-			tft.println((const char*)str);
-		}
-		else if (checkstatus == 1) {
+			uint8_t ret = OpenReadFile(0, 0, (const char*)str);
+			sleep_ms(2500);
+//			printf("After OpenReadFile %i\r\n",ret);
+		} else if (checkstatus == 1) {
+			printf("checkstatus : %i\r\n", checkstatus);
 			/* Display message: SD card does not exist */
 			//Restore the default scan
-//			LCD_SetGramScanWay(Lcd_ScanDir); 
-//			GUI_DisString_EN(0, 64, "SD_CARD_NOT_FOUND", &Font24, LCD_BACKGROUND, BLUE);
 			tft.setCursor(0, 64);
 			tft.print("SD_CARD_NOT_FOUND");
-		}
-		else {
+		} else {
+			printf("file not supported checkstatus : %i\r\n", checkstatus);
 			/* Display message: File not supported */
 			//Restore the default scan
-//			LCD_SetGramScanWay(Lcd_ScanDir);
-//			GUI_DisString_EN(0, 80, "SD_CARD_FILE_NOT_SUPPORTED", &Font24, LCD_BACKGROUND, BLUE);
 			tft.setCursor(0, 80);
 			tft.print("SD_CARD_FILE_NOT_SUPPORTED");
 		}
@@ -170,9 +239,6 @@ void TFTSDTouch::Show_bmp(uint8_t Bmp_ScanDir, uint8_t Lcd_ScanDir) {
 		}
 
 	}
-	//	LCD_Clear(LCD_BACKGROUND);
-	//	//Restore the default scan
-	//	LCD_SetGramScanWay(Lcd_ScanDir);
 	gpio_put(SD_CS_PIN, 1);
 }
 

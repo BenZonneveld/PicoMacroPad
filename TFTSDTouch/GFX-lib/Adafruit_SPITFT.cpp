@@ -199,31 +199,28 @@ void Adafruit_SPITFT::swapBytes(uint16_t *src, uint32_t len, uint16_t *dest) {
 */
 void Adafruit_SPITFT::writePixels(uint16_t* colors, uint32_t len, bool block,
     bool bigEndian) {
-    startWrite();
     if (!len)
     {
-        endWrite();
         return; // Avoid 0-byte transfers
     }
       // avoid paramater-not-used complaints
-    //(void)block;
-    //(void)bigEndian;
+    (void)block;
+    (void)bigEndian;
+    startWrite();
 
-//    if (!bigEndian) {
+    if (!bigEndian) {
         // switch to 16-bit writes
-//        hw_write_masked(&spi_get_hw(spi1)->cr0, 15 << SPI_SSPCR0_DSS_LSB,
-//            SPI_SSPCR0_DSS_BITS);
-        spi_set_format(spi1, 16, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
+        hw_write_masked(&spi_get_hw(spi1)->cr0, 15 << SPI_SSPCR0_DSS_LSB,
+            SPI_SSPCR0_DSS_BITS);
         spi_write16_blocking(spi1, colors, len);
-        spi_set_format(spi1, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
         // switch back to 8-bit
-//        hw_write_masked(&spi_get_hw(spi1)->cr0, 7 << SPI_SSPCR0_DSS_LSB,
-//            SPI_SSPCR0_DSS_BITS);
-//    }
-//    else {
-//    uint8_t rxDat;
-//        spi_write_blocking(spi1, (uint8_t*)colors,len * 2);
-//    }
+        hw_write_masked(&spi_get_hw(spi1)->cr0, 7 << SPI_SSPCR0_DSS_LSB,
+            SPI_SSPCR0_DSS_BITS);
+    }
+    else {
+    uint8_t rxDat;
+        spi_write_blocking(spi1, (uint8_t*)colors,len * 2);
+    }
     endWrite();
     return;
 }
