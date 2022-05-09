@@ -48,8 +48,8 @@ int lcd_test(void)
 	LCD_Init(lcd_scan_dir,800);
 	TP_Init(lcd_scan_dir);
 	GUI_Show();
-//	LCD_SCAN_DIR bmp_scan_dir = D2U_R2L;
-//	LCD_Show_bmp(bmp_scan_dir,lcd_scan_dir);
+	LCD_SCAN_DIR bmp_scan_dir = D2U_R2L;
+	LCD_Show_bmp(bmp_scan_dir,lcd_scan_dir);
 	TP_GetAdFac();
 	TP_Dialog();
 	while(1){

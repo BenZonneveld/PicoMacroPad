@@ -170,7 +170,7 @@ uint32_t Storage_OpenReadFile(uint8_t Xpoz, uint16_t Ypoz, const char* BmpName)
 			  f_read(&file1, aBuffer + 360, 360, (UINT *)&BytesRead);
 			  for (j = 0; j < width; j ++) {
 				  k = j * 3; 
-				  pic[i*240+j] = (uint16_t)(((aBuffer[k + 2] >> 3) << 11 ) | ((aBuffer[k + 1] >> 2) << 5) | (aBuffer[k] >> 3));
+				  pic[i*240+j] = (uint16_t)( ( (aBuffer[k + 2] >> 3) << 11 ) | ((aBuffer[k + 1] >> 2) << 5) | (aBuffer[k] >> 3));
 			  }
 		}
 		/* LCD_SetCursor if dont write here ,it will display innormal*/

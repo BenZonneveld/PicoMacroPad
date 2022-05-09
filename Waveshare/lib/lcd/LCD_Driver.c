@@ -90,10 +90,10 @@ static void LCD_InitReg(void)
 	if(LCD_2_8 == id){
 		LCD_WriteReg(0x11);
 		Driver_Delay_ms(100);
-		LCD_WriteReg(ST77XX_MADCTL);
+		LCD_WriteReg(0x36);
 		LCD_WriteData(0x00);
 
-		LCD_WriteReg(ST77XX_COLMOD);
+		LCD_WriteReg(0x3A);
 		LCD_WriteData(0x55);
 		
 		LCD_WriteReg(0xb2); // PORCTRL
@@ -163,7 +163,7 @@ static void LCD_InitReg(void)
 		LCD_WriteReg(0x55); // WRCACE
 		LCD_WriteData(0xB0);
 		
-		LCD_WriteReg(ST77XX_DISPON);
+		LCD_WriteReg(0x29);
 	}else{
 		LCD_WriteReg(0x21);
 		LCD_WriteReg(0xC2);	//Normal mode, increase can change the display quality, while increasing power consumption
