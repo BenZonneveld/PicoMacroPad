@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include<tusb.h>
 #include "macrohandler.h"
 #include "ImageReader/ImageReader.h"
 
@@ -133,6 +134,11 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
             {
                 const char* key = keys[i].GetString();
                 printf("Key %s\r\n", key);
+                uint8_t keycode[6] = { 0 };
+                keycode[0] = HID_KEY_A;
+                tud_hid_keyboard_report(0, 0, keycode);
+                sleep_ms(50);
+                tud_hid_keyboard_report(0, 0, NULL);
             }
         }
     }

@@ -505,7 +505,7 @@ ImageReturnCode ImageReader::coreBMP(
                                               // disabled until this can be rewritten with two
                                               // alternating 'dest' buffers (else the nonblocking
                                               // data out is overwritten in the dest[] write below).
-//                                                tft->writePixels(dest, destidx, true, false); // Write it
+                                                tft->writePixels(dest, destidx, true, false); // Write it
                                                 destidx = 0; // and reset dest index
                                             }
                                         }
@@ -523,7 +523,7 @@ ImageReturnCode ImageReader::coreBMP(
                                 if (tft) {       // Drawing to TFT?
                                     if (destidx) { // Any remainders?
                                     //  // See notes above re: DMA
-//                                        tft->writePixels(&dest[0], destidx, true, false); // Write it
+                                        tft->writePixels(&dest[0], destidx, true, false); // Write it
                                         destidx = 0; // and reset dest index
                                     }
                                 }
