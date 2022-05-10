@@ -25,8 +25,8 @@
 #include "hardware/spi.h"
 
 // HARDWARE CONFIG ---------------------------------------------------------
-#define SPI_MHZ 16
-#define SPI_DEFAULT_FREQ (SPI_MHZ * 1000000) ///< Default SPI data clock frequency
+#define SPI_MHZ 80
+#define SPI_LCD_FREQ (SPI_MHZ * 1000000) ///< Default SPI data clock frequency
 
 
 typedef enum {

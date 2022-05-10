@@ -8,15 +8,16 @@
 #include "tusb.h"
 #include "usb_descriptors.h"
 
-#include "reader.h" // JSON Reader
-#include "filereadstream.h"
+//#include "reader.h" // JSON Reader
+//#include "filereadstream.h"
 #include "document.h"
 
 #include "Adafruit_GFX.h"    // Core graphics library
 #include "Adafruit_SPITFT.h" // Hardware-specific library for ST7789
-#include "msc.h"
+#include "MacroPad.h"
 //#include "TFTSDTouch.h"
-#include "ImageReader/ImageReader.h"
+
+#include "MacroHandler/macrohandler.h"
 
 #define PROGMEM
 #include "fonts/FreeSans9pt7b.h"
@@ -26,11 +27,6 @@
 //Adafruit_SPITFT tft = Adafruit_SPITFT(240,320);
 TFTSDTouch device = TFTSDTouch();
 
-#define BUTSIZE 64
-#define XOFFSET 32
-#define YOFFSET 0
-#define XSPACING 32
-#define YSPACING 56
 float p = 3.1415926;
 
 using namespace rapidjson;
@@ -39,52 +35,22 @@ uint32_t millis()
     return to_ms_since_boot(get_absolute_time());
 }
 
-bool isInside(uint16_t x, uint16_t y, uint16_t sz, uint16_t xpoint, uint16_t ypoint)
-{
-    if ((xpoint >= x && xpoint <= (x + sz)) && (ypoint >= y && ypoint <= (y + sz)))
-        return 1;
-    return 0;
-}
-
-void CreateShortCut(ImageReader* reader, uint8_t pos, const char* icon, const char* name)
-{
-    uint16_t ypos = YOFFSET;
-    uint16_t xpos = XOFFSET + ((BUTSIZE + XSPACING) * pos);
-    if ((pos % 3) == 0 && pos > 0)
-    {
-        ypos = ypos + BUTSIZE + YSPACING;
-        xpos = XOFFSET;
-    }
-    uint8_t state = reader->drawBMP(icon, device.tft, 4+xpos, ypos+4);
-    device.tft.drawRoundRect(xpos, ypos, BUTSIZE, BUTSIZE, 8, WHITE);
-    device.tft.setFont(&FreeSans9pt7b);
-    device.tft.setTextColor(WHITE);
-
-    int16_t  x1, y1;
-    uint16_t w, h;
-    device.tft.getTextBounds(name, 0, 20, &x1, &y1, &w, &h);
-    device.tft.setCursor(xpos + (BUTSIZE/2) - (w/2) - 2, 2+(ypos + BUTSIZE) + h);
-    device.tft.print(name);
-}
-
 int main(void) {
-    uint8_t NumOfButtons = 0;
+    CMacro h_macro = CMacro();
+    uint8_t NumOfButtons = 1;
     bool Pressed = false;
     stdio_init_all();
-//    Serial.begin(9600);
-//   sleep_ms(5000);
     printf("Hello! ST77xx TFT Test\r\n");
     tusb_init();
     device.tft.init(240, 320);           // Init ST7789 320x240
-
     device.mmc.Init();
-
     device.tft.setRotation(L2R_D2U);
-    device.tft.fillScreen(BLUE);
-
     device.TP.Init(&device.tft);
-    ImageReader reader(device.mmc);
 
+    /*for (*/ uint8_t blue = (uint8_t)((BLUE & 0x001F) << 3);// blue > 0; blue--)
+    //{
+        device.tft.fillScreen(device.tft.color565(0,0,blue));
+    //}
     device.TP.GetAdFac(); 
 //    device.TP.Adjust();
     device.tft.setCursor(0, 100);
@@ -92,7 +58,8 @@ int main(void) {
     device.tft.setFont(&FreeSans24pt7b);
     device.tft.println("STARTING UP");
 
-    //Value &buttons = MacroPage(0);
+    Value buttons;
+    h_macro.getMacroPage(0);
 
     printf("Initialized\r\n");
     device.tft.setRotation(L2R_D2U);
@@ -111,42 +78,8 @@ int main(void) {
                 continue;
             Xpoint0 = xpoint;
             Ypoint0 = ypoint;
-            for (uint8_t i = 0; i < NumOfButtons; i++)
-            {
-                const Value& but = buttons[i];
-                assert(but.IsArray());
-//                assert(but.HasMember["pos"]);
-//                assert(but["pos".IsInt()]);
-//                assert(but.HasMember["icon"]);
-//                assert(but["icon"].IsString());
-                 assert(but.HasMember["name"]);
-                assert(but["name"].IsString());
-                assert(but.HasMember["keys"]);
-                assert(but["keys"].IsArray());
-//                10 + ((BUTSIZE + SPACING) * pos), 14
-                uint16_t ypos = YOFFSET;
-                uint16_t xpos = XOFFSET + ((BUTSIZE + XSPACING) * i);
-                if ((i % 3) == 0 && i > 0)
-                {
-                    ypos = ypos + BUTSIZE + YSPACING;
-                    xpos = XOFFSET;
-                }
-//                printf("index: %i, xpoint: %i, ypoint: %i\r\n", i, xpoint, ypoint);
-                if (isInside(xpos, ypos, BUTSIZE, xpoint, ypoint) && !Pressed)
-                {
-                    Pressed = true;
-                    const Value& keys = but["keys"];
-                    //                    keys.SetArray();
-                    assert(keys.IsArray());
-                    printf("I: %i\r\n", i);
-                    printf("Keys size %i\r\n", keys.Size());
-                    for (SizeType i = 0; i < keys.Size(); i++) // Uses SizeType instead of size_t
-                    {
-                        const char *key = keys[i].GetString();
-                        printf("Key %s\r\n", key);
-                    }
-                }
-            }
+            if ( !Pressed)
+                Pressed = h_macro.checkHit(xpoint,ypoint);
         }
         else {
             Pressed = false;

@@ -29,15 +29,14 @@ unsigned char MMC_SD::SPI_ReadWriteByte(unsigned char CMD)
 //set spi in low speed mode.
 void MMC_SD::SPI_SpeedLow(void)
 {
-	spi_baudrate = spi_get_baudrate(spi1);
-	spi_set_baudrate(spi1, MMC_BAUDRATE);
+	spi_set_baudrate(spi1, SPI_MMC_BAUDRATE);
 }
 
 
 //set spi in high speed mode.
 void MMC_SD::SPI_SpeedHigh(void)
 {
-	spi_set_baudrate(spi1, spi_baudrate);
+	spi_set_baudrate(spi1, SPI_LCD_FREQ);
 }
 
 
@@ -45,7 +44,8 @@ void MMC_SD::SPI_SpeedHigh(void)
 void MMC_SD::DisSelect(void)
 {
 	gpio_put(SD_CS_PIN,1);
-	SPI_ReadWriteByte(0xff);//providing extra 8 clocks  
+	SPI_ReadWriteByte(0xff);//providing extra 8 clocks
+	SPI_SpeedHigh();
 }
 
 //pick sd card and waiting until until it's ready
@@ -55,6 +55,7 @@ unsigned char MMC_SD::Select(void)
 	gpio_put(LCD_CS_PIN, 1);
 	gpio_put(TP_CS_PIN, 1);
 	gpio_put(SD_CS_PIN,0);
+	SPI_SpeedLow();
 	if(WaitReady()==0)return 0; 
 	DisSelect();
 	return 1;
@@ -401,4 +402,29 @@ void MMC_SD::Init(void) {
 		}
 	}
 	SPI_SpeedHigh();
+}
+
+WCHAR MMC_SD::ff_convert(WCHAR wch, UINT dir)
+{
+	if (wch < 0x80) {
+		/* ASCII Char */
+		return wch;
+	}
+
+	/* I don't support unicode it is too big! */
+	return 0;
+}
+
+WCHAR MMC_SD::ff_wtoupper(WCHAR wch)
+{
+	if (wch < 0x80) {
+		/* ASCII Char */
+		if (wch >= 'a' && wch <= 'z') {
+			wch &= ~0x20;
+		}
+		return wch;
+	}
+
+	/* I don't support unicode it is too big! */
+	return 0;
 }

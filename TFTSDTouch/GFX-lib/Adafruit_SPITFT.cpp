@@ -119,6 +119,7 @@ void Adafruit_SPITFT::setSPISpeed(uint32_t freq) {
 */
 void Adafruit_SPITFT::startWrite(void) {
 //    gpio_put(SD_CS_PIN, 1);
+    spi_set_baudrate(spi1, SPI_LCD_FREQ);
     SPI_CS_LOW();
 }
 
@@ -1130,14 +1131,10 @@ void Adafruit_SPITFT::init(uint16_t width, uint16_t height) {
     gpio_put(LCD_BKL_PIN, 1);
     gpio_put(SD_CS_PIN, 1);
     // SPI Init
-    spi_init(spi1, SPI_DEFAULT_FREQ); // Init at 4 Mhz
+    spi_init(spi1, SPI_LCD_FREQ);
     gpio_set_function(LCD_MISO_PIN, GPIO_FUNC_SPI);
     gpio_set_function(LCD_CLK_PIN, GPIO_FUNC_SPI);
     gpio_set_function(LCD_MOSI_PIN, GPIO_FUNC_SPI);
-
-    // SD Init 
-    // 
-    // 
 
     // LCD Reset
     gpio_put(LCD_RST_PIN, 1);

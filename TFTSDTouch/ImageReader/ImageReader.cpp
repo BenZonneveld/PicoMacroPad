@@ -51,7 +51,7 @@
 #ifdef __AVR__
 #define BUFPIXELS 24 ///<  24 * 5 =  120 bytes
 #else
-#define BUFPIXELS 720 ///< 200 * 5 = 1000 bytes
+#define BUFPIXELS 2048 ///< 200 * 5 = 1000 bytes
 #endif
 
 // Image CLASS ****************************************************
@@ -394,9 +394,6 @@ ImageReturnCode ImageReader::coreBMP(
         loadX = 0;
         loadY = 0;
 
-//        filesys->f_close(&file);
-//        filesys->f_open(&file, filename, FA_READ);
-//        filesys->f_lseek(&file, offset - 1);
         if (tft) {
             // Crop area to be loaded (if destination is TFT)
             if (x < 0) {
@@ -508,7 +505,7 @@ ImageReturnCode ImageReader::coreBMP(
                                               // disabled until this can be rewritten with two
                                               // alternating 'dest' buffers (else the nonblocking
                                               // data out is overwritten in the dest[] write below).
-                                                tft->writePixels(dest, destidx, true, false); // Write it
+//                                                tft->writePixels(dest, destidx, true, false); // Write it
                                                 destidx = 0; // and reset dest index
                                             }
                                         }
@@ -519,9 +516,6 @@ ImageReturnCode ImageReader::coreBMP(
                                     }
                                     if (depth == 24) {
                                         // Convert each pixel from BMP to 565 format, save in dest
-//                                        b = sdbuf[srcidx++];
-//                                        g = sdbuf[srcidx++];
-//                                        r = sdbuf[srcidx++];
                                         dest[destidx++] = (uint16_t)((sdbuf[srcidx+2] >> 3) << 11) | ((sdbuf[srcidx+1] >> 2) << 5) | (sdbuf[srcidx] >> 3);
                                         srcidx += 3;
                                     }
@@ -529,7 +523,7 @@ ImageReturnCode ImageReader::coreBMP(
                                 if (tft) {       // Drawing to TFT?
                                     if (destidx) { // Any remainders?
                                     //  // See notes above re: DMA
-                                        tft->writePixels(&dest[0], destidx, true, false); // Write it
+//                                        tft->writePixels(&dest[0], destidx, true, false); // Write it
                                         destidx = 0; // and reset dest index
                                     }
                                 }

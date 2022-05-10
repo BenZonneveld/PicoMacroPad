@@ -92,7 +92,7 @@
 */
 
 
-#define _USE_LFN     0  /* 0 to 3 */
+#define _USE_LFN     02  /* 0 to 3 */
 #define _MAX_LFN     255  /* Maximum LFN length to handle (12 to 255) */
 /* The _USE_LFN option switches the LFN feature.
 /

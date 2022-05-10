@@ -25,6 +25,8 @@
 #define	POINT				uint16_t		//The type of coordinate (unsigned short) 
 #define	LENGTH				uint16_t		//The type of coordinate (unsigned short) 
 
+#define SPI_TP_FREQ (3 * 1000000) ///< Default SPI data clock frequency
+
 #define TP_PRESS_DOWN           0x80
 #define TP_PRESSED              0x40
 

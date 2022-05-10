@@ -7,7 +7,8 @@
 #define _READONLY	0	/* 1: Read-only mode */
 #define _USE_IOCTL	1
 
-#define MMC_BAUDRATE 16000000
+
+#define SPI_MMC_BAUDRATE 48*1000*1000
 
 #include "integer.h"
 
@@ -141,7 +142,13 @@ public:
     uint8_t WriteDisk(uint8_t* buf, uint32_t sector, uint8_t cnt);
     uint32_t GetSectorCount(void);
 protected:
-    
+    WCHAR ff_convert(WCHAR wch, UINT dir);
+    WCHAR ff_wtoupper(WCHAR wch);
+    int cmp_lfn(WCHAR* lfnbuf,BYTE* dir);
+    void gen_numname(BYTE* dst,const BYTE* src,const WCHAR* lfn,WORD seq);
+    BYTE sum_sfn(const BYTE* dir);
+    void fit_lfn(const WCHAR* lfnbuf,BYTE* dir,BYTE ord,BYTE sum);
+    int pick_lfn(WCHAR* lfnbuf,BYTE* dir);
     uint8_t SPI_ReadWriteByte(uint8_t data);
     uint8_t WaitReady(void);
     uint8_t GetResponse(uint8_t Response);

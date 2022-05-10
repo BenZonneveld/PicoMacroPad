@@ -67,14 +67,14 @@ uint16_t cTouch::Read_ADC_Average(uint8_t Channel_Cmd)
     uint16_t Read_Buff[READ_TIMES];
     uint16_t Read_Sum = 0, Read_Temp = 0;
     //LCD SPI speed = 3 MHz
-    spi_set_baudrate(spi1,3000000);
+    spi_set_baudrate(spi1, SPI_TP_FREQ);
     //Read and save multiple samples
     for(i = 0; i < READ_TIMES; i++){
 		Read_Buff[i] = Read_ADC(Channel_Cmd);
 		sleep_us(200);
 	}
     //LCD SPI speed = 18 MHz
-    spi_set_baudrate(spi1,18000000);
+    spi_set_baudrate(spi1,SPI_LCD_FREQ);
     //Sort from small to large
     for (i = 0; i < READ_TIMES  -  1; i ++) {
         for (j = i + 1; j < READ_TIMES; j ++) {
