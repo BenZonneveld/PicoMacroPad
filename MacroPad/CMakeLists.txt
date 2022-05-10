@@ -28,14 +28,14 @@ target_include_directories(${PROJECT} PUBLIC
 )        
 
 target_sources(${PROJECT} PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/msc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/MacroPad.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/msc_disk.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/macrohandler.cpp
 )
 
-pico_set_program_name(${PROJECT} "sdcard")
-pico_set_program_version(${PROJECT} "0.1")
+pico_set_program_name(${PROJECT} "MacroPad")
+pico_set_program_version(${PROJECT} "0.5")
 
 # Enable usb output, disable uart output
 pico_enable_stdio_usb(${PROJECT} 0)
