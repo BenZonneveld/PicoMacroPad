@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include<tusb.h>
+#include <unordered_map>
 #include "macrohandler.h"
 #include "ImageReader/ImageReader.h"
 
@@ -8,14 +9,75 @@
 //#include "filereadstream.h"
 #include "document.h"
 #include "MacroPad.h"
+#include "TinyUSB_Mouse_and_Keyboard.h"
 
+CMacro::CMacro()
+{
+    buttons = 0;
+    Keyboard.begin();
+//    metakeys["LEFT_CTRL"] = LEFT_CTRL;
+
+    metakeys = {
+        {"LEFT_CTRL",0x80},
+        {"LEFT_SHIFT",0x81},
+        {"LEFT_ALT",0x82},
+        {"LEFT_GUI",0x83},
+        {"CTRL", 0x80}, // Assume left ctrl
+        {"SHIFT", 0x81}, // left shift
+        {"ALT", 0x82}, // left alt
+        {"GUI", 0x83},
+        {"RIGHT_CTRL",0x84},
+        {"RIGHT_SHIFT",0x85 },
+        {"RIGHT_ALT",0x86 },
+        {"RIGHT_GUI",0x87 },
+        {"UP_ARROW",0xDA },
+        {"DOWN_ARROW",0xD9 },
+        {"LEFT_ARROW",0xD8 },
+        {"RIGHT_ARROW",0xD7 },
+        {"BACKSPACE",0xB2 },
+        {"TAB",0xB3 },
+        {"RETURN",0xB0 },
+        {"ESC",0xB1 },
+        {"INSERT",0xD1 },
+        {"DELETE",0xD4 },
+        {"PAGE_UP",0xD3},
+        {"PAGE_DOWN",0xD6},
+        {"HOME",0xD2},
+        {"END",0xD5},
+        {"CAPS_LOCK",0xC1},
+        {"F1",0xC2},
+        {"F2",0xC3},
+        {"F3",0xC4},
+        {"F4",0xC5},
+        {"F5",0xC6},
+        {"F6",0xC7},
+        {"F7",0xC8},
+        {"F8",0xC9},
+        {"F9",0xCA},
+        {"F10",0xCB},
+        {"F11",0xCC},
+        {"F12",0xCD},
+        {"F13",0xF0},
+        {"F14",0xF1},
+        {"F15",0xF2},
+        {"F16",0xF3},
+        {"F17",0xF4},
+        {"F18",0xF5},
+        {"F19",0xF6},
+        {"F20",0xF7},
+        {"F21",0xF8},
+        {"F22",0xF9},
+        {"F23",0xFA},
+        {"F24",0xFB}
+    };
+}
 void CMacro::getMacroPage(uint8_t pageNmbr)
 {
     int16_t  x1, y1;
     uint16_t w, h;
     FIL fp;
     char pagename[64] = {0};
-    uint8_t res = device.mmc.f_open(&fp, (char*)"macro.jsn", FA_READ);
+    uint8_t res = device.mmc.f_open(&fp, (char*)"macro.json", FA_READ);
     printf("res: %i\r\n", res);
 
     char macrobuf[65535] = { 0 };
@@ -31,48 +93,64 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
     }
     device.mmc.f_close(&fp);
     device.tft.fillScreen(BLACK);
-    doc.Parse(macrobuf);
+    ParseResult ok = doc.Parse(macrobuf);
 
     printf("Parsed macro.json\r\n");
-
-    assert(doc.HasMember("page"));
-    const Value& pages = doc["page"];
-    if (pageNmbr >= pages.Size())
+    if (ok)
     {
-        return;
+        assert(doc.HasMember("page"));
+        const Value& pages = doc["page"];
+        if (pageNmbr >= pages.Size())
+        {
+            return;
+        }
+        page = pageNmbr;
+
+        if (doc["page"][page].HasMember("name"))
+        {
+            sprintf(pagename, "%s", doc["page"][page]["name"].GetString());
+        }
+        else {
+            sprintf(pagename, "Page %i", page + 1);
+        }
+        device.tft.setFont(&FreeSans12pt7b);
+        device.tft.setTextColor(WHITE);
+        device.tft.getTextBounds(pagename, 0, 20, &x1, &y1, &w, &h);
+        device.tft.setCursor((device.tft.width() / 2) - (w / 2) - 2, h);
+        device.tft.print(pagename);
+
+        Value& page = doc["page"][pageNmbr];
+        assert(page.HasMember("button"));
+        buttons = page["button"];
+        assert(buttons.IsArray());
+        for (SizeType i = 0; i < buttons.Size(); i++) // Uses SizeType instead of size_t
+        {
+            const Value& but = buttons[i];
+            assert(but.IsArray());
+            assert(but.HasMember["icon"]);
+            assert(but["icon"].IsString());
+            assert(but.HasMember["name"]);
+            assert(but["name"].IsString());
+            assert(but.HasMember["keys"]);
+            assert(but["keys"].IsArray());
+
+            //        printf("Pos: %i\r\n", but["pos"].GetInt());
+            //        printf("Icon: %s\r\n", but["icon"].GetString());
+    //        printf("name: %s\r\n", but["name"].GetString());
+            //        printf("keys: %s\r\n", but["keys"].GetArray());
+
+            CreateShortCut(i, but["icon"].GetString(), but["name"].GetString());
+        }
     }
-    page = pageNmbr;
-
-    sprintf(pagename, "Page %i", page + 1);
-    device.tft.setFont(&FreeSans12pt7b);
-    device.tft.setTextColor(WHITE);
-    device.tft.getTextBounds(pagename, 0, 20, &x1, &y1, &w, &h);
-    device.tft.setCursor((device.tft.width()/2) - (w / 2) - 2, h);
-    device.tft.print(pagename);
-
-    Value& page = doc["page"][pageNmbr];
-    assert(page.HasMember("button"));
-    buttons = page["button"];
-    assert(buttons.IsArray());
-    for (SizeType i = 0; i < buttons.Size(); i++) // Uses SizeType instead of size_t
-    {
-        const Value& but = buttons[i];
-        assert(but.IsArray());
-        assert(but.HasMember["pos"]);
-        assert(but["pos".IsInt()]);
-        assert(but.HasMember["icon"]);
-        assert(but["icon"].IsString());
-        assert(but.HasMember["name"]);
-        assert(but["name"].IsString());
-        assert(but.HasMember["keys"]);
-        assert(but["keys"].IsArray());
-
-        //        printf("Pos: %i\r\n", but["pos"].GetInt());
-        //        printf("Icon: %s\r\n", but["icon"].GetString());
-//        printf("name: %s\r\n", but["name"].GetString());
-        //        printf("keys: %s\r\n", but["keys"].GetArray());
-  
-        CreateShortCut(i, but["icon"].GetString(), but["name"].GetString());
+    else {
+        device.tft.fillScreen(WHITE);
+        device.tft.setCursor(0, 100);
+        device.tft.setTextSize(1);
+        device.tft.setFont(&FreeSans24pt7b);
+        device.tft.setTextColor(RED);
+        device.tft.println("Error in");
+        device.tft.println("macro.json.");
+        printf("error in json\r\n");
     }
     return;// buttons;
 }
@@ -110,8 +188,8 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
     {
         const Value& but = buttons[pos];
         assert(but.IsArray());
-        assert(but.HasMember["name"]);
-        assert(but["name"].IsString());
+//        assert(but.HasMember["name"]);
+//        assert(but["name"].IsString());
         assert(but.HasMember["keys"]);
         assert(but["keys"].IsArray());
         uint16_t ypos = YOFFSET;
@@ -130,19 +208,49 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
             assert(keys.IsArray());
             printf("I: %i\r\n", pos);
             printf("Keys size %i\r\n", keys.Size());
+            uint8_t keycode[6] = { 0 };
             for (SizeType i = 0; i < keys.Size(); i++) // Uses SizeType instead of size_t
             {
-                const char* key = keys[i].GetString();
-                printf("Key %s\r\n", key);
-                uint8_t keycode[6] = { 0 };
-                keycode[0] = HID_KEY_A;
-                tud_hid_keyboard_report(0, 0, keycode);
-                sleep_ms(50);
-                tud_hid_keyboard_report(0, 0, NULL);
+                char key[32];
+//                printf("keys[%i].Size() = %i\r\n", i, keys[i].Size());
+                for (SizeType m = 0; m < keys[i].Size(); m++)
+                {
+                    snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
+                    if (strlen(key) > 1) // check for special or modifier keys
+                    {
+                        Upper(key);
+                        if (metakeys[key] == 0)
+                        {
+                            device.tft.println("Invalid metakey.");
+                            device.tft.print(key);
+                            //return Pressed;
+                        }
+                        else {
+                            printf("metakey %s\r\n", key);
+                            Keyboard.press(metakeys[key]);
+                        }
+                    }
+                    else {
+                        tolower(key[0]);
+                        Keyboard.press(key[0]);
+                    }
+                    printf("Key %s\r\n", key);
+                }
+                Keyboard.releaseAll();
             }
         }
     }
     return Pressed;
+}
+
+void CMacro::Upper(char* temp)
+{
+    char* s = temp;
+    while (*s)
+    {
+        *s = toupper((unsigned char)*s);
+        s++;
+    }
 }
 
 bool CMacro::isInside(uint16_t x, uint16_t y, uint16_t sz, uint16_t xpoint, uint16_t ypoint)

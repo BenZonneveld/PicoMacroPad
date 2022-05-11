@@ -25,6 +25,7 @@ add_executable(${PROJECT})
 
 target_include_directories(${PROJECT} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler
 )        
 
 target_sources(${PROJECT} PUBLIC
@@ -32,6 +33,7 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/msc_disk.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/macrohandler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/TinyUSB_Mouse_and_Keyboard.cpp
 )
 
 pico_set_program_name(${PROJECT} "MacroPad")

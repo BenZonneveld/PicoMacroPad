@@ -58,7 +58,6 @@ int main(void) {
     device.tft.setFont(&FreeSans24pt7b);
     device.tft.println("STARTING UP");
 
-    Value buttons;
     h_macro.getMacroPage(0);
 
     printf("Initialized\r\n");
@@ -221,7 +220,7 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
     (void)report_type;
     (void)buffer;
     (void)reqlen;
-
+    
     return 0;
 }
 
