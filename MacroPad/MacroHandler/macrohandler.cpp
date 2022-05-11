@@ -8,6 +8,13 @@
 //#include "filereadstream.h"
 #include "document.h"
 #include "MacroPad.h"
+#include "TinyUSB_Mouse_and_Keyboard.h"
+
+CMacro::CMacro()
+{
+    buttons = 0;
+    Keyboard.begin();
+}
 
 void CMacro::getMacroPage(uint8_t pageNmbr)
 {
@@ -130,16 +137,15 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
             assert(keys.IsArray());
             printf("I: %i\r\n", pos);
             printf("Keys size %i\r\n", keys.Size());
+            uint8_t keycode[6] = { 0 };
             for (SizeType i = 0; i < keys.Size(); i++) // Uses SizeType instead of size_t
             {
                 const char* key = keys[i].GetString();
                 printf("Key %s\r\n", key);
-                uint8_t keycode[6] = { 0 };
-                keycode[0] = HID_KEY_A;
-                tud_hid_keyboard_report(0, 0, keycode);
-                sleep_ms(50);
-                tud_hid_keyboard_report(0, 0, NULL);
+                keycode[i] = (uint8_t)key[0];
             }
+            Keyboard.print("We are the musicmakers.");
+//            sendKey(0);
         }
     }
     return Pressed;
