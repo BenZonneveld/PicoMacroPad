@@ -94,7 +94,7 @@ Adafruit_SPITFT::Adafruit_SPITFT()
   gpio_set_function(LCD_CLK_PIN, GPIO_FUNC_SPI);
   gpio_set_function(LCD_MOSI_PIN, GPIO_FUNC_SPI);
   // Make pins available to picotool
-//    bi_decl(bi_3pins_with_func(miso, mosi, sck, GPIO_FUNC_SPI));
+    bi_decl(bi_3pins_with_func(miso, mosi, sck, GPIO_FUNC_SPI));
 
     // Chip select line
   gpio_init(LCD_CS_PIN);
