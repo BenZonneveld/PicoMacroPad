@@ -3,20 +3,26 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <hardware/spi.h>
+//#include <hardware/spi.h>
 #include "bsp/board.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
+
+/* FAT FS */
+#include "f_util.h"
+#include "ff.h"
+#include "hw_config.h"
 
 //#include "reader.h" // JSON Reader
 //#include "filereadstream.h"
 #include "document.h"
 
-#include "Adafruit_GFX.h"    // Core graphics library
-#include "Adafruit_SPITFT.h" // Hardware-specific library for ST7789
-#include "MacroPad.h"
-//#include "TFTSDTouch.h"
+/* Screen Handling */
+#include "GFX-lib/Adafruit_GFX.h"
+#include "GFX-lib/Adafruit_SPITFT.h"
 
+#include "Touch.h"
+#include "MacroPad.h"
 #include "MacroHandler/macrohandler.h"
 
 #define PROGMEM
@@ -25,9 +31,12 @@
 #include "fonts/FreeSans18pt7b.h"
 #include "fonts/FreeSans24pt7b.h"
 //Adafruit_SPITFT tft = Adafruit_SPITFT(240,320);
-TFTSDTouch device = TFTSDTouch();
+//TFTSDTouch device = TFTSDTouch();
 
 float p = 3.1415926;
+
+cTouch TP = cTouch();
+Adafruit_SPITFT tft = Adafruit_SPITFT();
 
 using namespace rapidjson;
 uint32_t millis()
@@ -42,37 +51,37 @@ int main(void) {
     stdio_init_all();
     printf("Hello! ST77xx TFT Test\r\n");
     tusb_init();
-    device.tft.init(240, 320);           // Init ST7789 320x240
-    device.mmc.Init();
-    device.tft.setRotation(L2R_D2U);
-    device.TP.Init(&device.tft);
+    tft.init(240, 320);           // Init ST7789 320x240
+//    device.mmc.Init();
+    tft.setRotation(L2R_D2U);
+    TP.Init(&tft);
 
     /*for (*/ uint8_t blue = (uint8_t)((BLUE & 0x001F) << 3);// blue > 0; blue--)
     //{
-        device.tft.fillScreen(device.tft.color565(0,0,blue));
+        tft.fillScreen(tft.color565(0,0,blue));
     //}
-    device.TP.GetAdFac(); 
+    TP.GetAdFac(); 
 //    device.TP.Adjust();
-    device.tft.setCursor(0, 100);
-    device.tft.setTextSize(1);
-    device.tft.setFont(&FreeSans24pt7b);
-    device.tft.println("STARTING UP");
+    tft.setCursor(0, 100);
+    tft.setTextSize(1);
+    tft.setFont(&FreeSans24pt7b);
+    tft.println("STARTING UP");
 
     h_macro.getMacroPage(0);
 
     printf("Initialized\r\n");
-    device.tft.setRotation(L2R_D2U);
+    tft.setRotation(L2R_D2U);
 
     uint16_t Xpoint0 = 0,Ypoint0 = 0xffff;
     while(1)
     {
         tud_task();
         hid_task();
-        device.TP.Scan();
-        if (device.TP.status().chStatus & TP_PRESS_DOWN)
+        TP.Scan();
+        if (TP.status().chStatus & TP_PRESS_DOWN)
         {
-            uint16_t xpoint = device.TP.DrawPoint().Xpoint;
-            uint16_t ypoint = device.TP.DrawPoint().Ypoint;
+            uint16_t xpoint = TP.DrawPoint().Xpoint;
+            uint16_t ypoint = TP.DrawPoint().Ypoint;
             if (xpoint == Xpoint0 && ypoint == Ypoint0)
                 continue;
             Xpoint0 = xpoint;

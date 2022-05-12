@@ -26,14 +26,17 @@ add_executable(${PROJECT})
 target_include_directories(${PROJECT} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler
+        ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader
 )        
 
 target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroPad.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/msc_disk.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/hw_config.c
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/macrohandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/TinyUSB_Mouse_and_Keyboard.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader/ImageReader.cpp
 )
 
 pico_set_program_name(${PROJECT} "MacroPad")
@@ -42,13 +45,17 @@ pico_set_program_version(${PROJECT} "0.5")
 # Enable usb output, disable uart output
 pico_enable_stdio_usb(${PROJECT} 0)
 pico_enable_stdio_uart(${PROJECT} 1)
+#set(PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE 1)
+#set(PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_RESET_TO_BOOTSEL  1)
 
 target_link_libraries(${PROJECT} PUBLIC
         pico_stdlib
         pico_bootsel_via_double_reset
         hardware_spi
         hardware_gpio
-        TFTSDTouch
+        touch
+        GFX-lib
+        FatFs_SPI
 )
 
 family_configure_device_example(${PROJECT})        
