@@ -213,13 +213,14 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
             const Value& keys = but["keys"];
             //                    keys.SetArray();
             assert(keys.IsArray());
-            printf("I: %i\r\n", pos);
-            printf("Keys size %i\r\n", keys.Size());
+//            printf("I: %i\r\n", pos);
+//            printf("Keys size %i\r\n", keys.Size());
             uint8_t keycode[6] = { 0 };
             for (SizeType i = 0; i < keys.Size(); i++) // Uses SizeType instead of size_t
             {
                 char key[32];
 //                printf("keys[%i].Size() = %i\r\n", i, keys[i].Size());
+
                 for (SizeType m = 0; m < keys[i].Size(); m++)
                 {
                     snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
@@ -228,20 +229,19 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
                         Upper(key);
                         if (metakeys[key] == 0)
                         {
-                            tft.println("Invalid metakey.");
-                            tft.print(key);
-                            //return Pressed;
+                            snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
+                            Keyboard.print(key);
                         }
                         else {
-                            printf("metakey %s\r\n", key);
+//                            printf("metakey %s\r\n", key);
                             Keyboard.press(metakeys[key]);
                         }
                     }
-                    else {
+                    else if (key[0] != '\0') {
                         tolower(key[0]);
                         Keyboard.press(key[0]);
+//                        printf("Key %s\r\n", key);
                     }
-                    printf("Key %s\r\n", key);
                 }
                 Keyboard.releaseAll();
             }

@@ -325,6 +325,7 @@ ImageReturnCode ImageReader::coreBMP(
     Image* img // NULL if load-to-screen
 ) {
 
+    uint8_t rotation = tft->getRotation();
     ImageReturnCode status = IMAGE_ERR_FORMAT; // IMAGE_SUCCESS on valid file
     uint32_t offset;                           // Start of image data in file
     uint32_t headerSize;                       // Indicates BMP version
@@ -454,7 +455,8 @@ ImageReturnCode ImageReader::coreBMP(
 
                     if ((loadWidth > 0) && (loadHeight > 0)) { // Clip top/left
                         if (tft) {
-                            tft->setAddrWindow(x, y, loadWidth, loadHeight);
+                            tft->setRotation(3);
+                            tft->setAddrWindow((tft->width() - loadWidth)- x, (tft->height() - loadHeight) - y, loadWidth, loadHeight);
                             //              tft->setCursor(x, y);
                         }
                         else {
@@ -488,7 +490,7 @@ ImageReturnCode ImageReader::coreBMP(
                               // position actually needs to change (avoids a lot of cluster
                               // math in SD library).
                                 f_read(&file, sdbuf, 3 * loadWidth, &BytesRead);
-                                if (flip) // Bitmap is stored bottom-to-top order (normal BMP)
+/*                                if (flip) // Bitmap is stored bottom-to-top order (normal BMP)
                                     bmpPos = offset + (bmpHeight - 1 - (row + loadY)) * rowSize;
                                 else // Bitmap is stored top-to-bottom
                                     bmpPos = offset + (row + loadY) * rowSize;
@@ -501,20 +503,28 @@ ImageReturnCode ImageReader::coreBMP(
                                     bitOut = 0x80;
                                     if (img)
                                         destidx = ((bmpWidth + 7) / 8) * row;
-                                }
+                                }*/
+
                                 for (col = 0; col < loadWidth; col++) { // For each pixel...
                                     uint16_t k;
+//                                    sleep_ms(5);
                                     if (depth == 24) {
                                         // Convert each pixel from BMP to 565 format, save in dest
                                         k = col * 3;
-                                        dest[col] = (uint16_t)((sdbuf[k+2] >> 3) << 11) | ((sdbuf[k+1] >> 2) << 5) | (sdbuf[k] >> 3);
-                                        //srcidx += 3;
+                                        if (flip)
+                                        {
+                                            dest[loadWidth - col] = (uint16_t)((sdbuf[k + 2] >> 3) << 11) | ((sdbuf[k + 1] >> 2) << 5) | (sdbuf[k] >> 3);
+                                        }
+                                        else {
+                                            dest[col] = (uint16_t)((sdbuf[k + 2] >> 3) << 11) | ((sdbuf[k + 1] >> 2) << 5) | (sdbuf[k] >> 3);
+                                        }//srcidx += 3;
                                     }                                    
                                 }                // end pixel loop
 
                                 if (tft) {       // Drawing to TFT?
                                     if (loadWidth) { // Any remainders?
                                     //  // See notes above re: DMA
+                                    //    tft->setAddrWindow(x,  (y + loadHeight) - row, loadWidth, 1);
                                         tft->writePixels(&dest[0], loadWidth, true, false); // Write it
                                     }
                                 }
@@ -535,6 +545,7 @@ ImageReturnCode ImageReader::coreBMP(
         delete(dest);
     }           // end signature
 
+    tft->setRotation(rotation);
     f_close(&file);
     umount_card();
     return status;

@@ -49,7 +49,7 @@ int main(void) {
     uint8_t NumOfButtons = 1;
     bool Pressed = false;
     stdio_init_all();
-    printf("Hello! ST77xx TFT Test\r\n");
+    printf("Hello! MacroPad debug.\r\n");
     tusb_init();
     tft.init(240, 320);           // Init ST7789 320x240
 //    device.mmc.Init();
@@ -70,7 +70,7 @@ int main(void) {
     h_macro.getMacroPage(0);
 
     printf("Initialized\r\n");
-    tft.setRotation(L2R_D2U);
+//    tft.setRotation(L2R_D2U);
 
     uint16_t Xpoint0 = 0,Ypoint0 = 0xffff;
     while(1)
