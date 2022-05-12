@@ -72,12 +72,43 @@ CMacro::CMacro()
         {"F24",0xFB}
     };
 }
+
+void CMacro::init()
+{
+    SoftButton(0, NULL);
+    SoftButton(1, NULL);
+    SoftButton(2, NULL);
+    SoftButton(3, NULL);
+}
+
+void CMacro::PrevPage()
+{
+    if (page > 0)
+    {
+        page--;
+        getMacroPage(page);
+    }
+}
+
+void CMacro::NextPage()
+{
+    if (page + 1 < max_page)
+    {
+        page++;
+        getMacroPage(page);
+    }
+}
+
+void CMacro::getCurrentPage()
+{
+    getMacroPage(page);
+}
+
 void CMacro::getMacroPage(uint8_t pageNmbr)
 {
     int16_t  x1, y1;
     uint16_t w, h;
     FIL fp;
-    char pagename[64] = {0};
     mount_card();
     uint8_t res = f_open(&fp, (char*)"macro.json", FA_READ);
     printf("res: %i\r\n", res);
@@ -87,8 +118,6 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
     if (res == 0)
     {
         f_read(&fp, macrobuf, 65535, &bread);
-        //   printf("Bytes read: %i\r\n", bread);
-        //   printf("Macrobuf: %s\r\n", macrobuf);
     }
     else {
         umount_card();
@@ -108,6 +137,9 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
             return;
         }
         page = pageNmbr;
+        max_page = pages.Size();
+
+        printf("max_page %i\r\n", max_page);
 
         if (doc["page"][page].HasMember("name"))
         {
@@ -117,10 +149,29 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
             sprintf(pagename, "Page %i", page + 1);
         }
         tft.setFont(&FreeSans12pt7b);
+        
         tft.setTextColor(WHITE);
         tft.getTextBounds(pagename, 0, 20, &x1, &y1, &w, &h);
+        tft.fillRect(0, 0, tft.width(), h + 4 , DARKGREY);
         tft.setCursor((tft.width() / 2) - (w / 2) - 2, h);
+        
         tft.print(pagename);
+
+        if (max_page > 1 && (page+1) < max_page) // Indicate next pages available
+        {
+//            tft.fillTriangle(320, h / 2, 300, 0, 300, h, GREEN);
+            SoftButton(3, (char*)"Page +");
+        } else{
+            SoftButton(3, NULL);
+        }
+        if (max_page > 1 && page > 0) // Indicate previous pages available
+        {
+            SoftButton(0, (char*)"Page -");
+//            tft.fillTriangle(0, h / 2, 20, 0, 20, h, GREEN);
+        }
+        else {
+            SoftButton(0, NULL);
+        }
 
         Value& page = doc["page"][pageNmbr];
         assert(page.HasMember("button"));
@@ -155,17 +206,20 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
         tft.println("macro.json.");
         printf("error in json\r\n");
     }
+    SoftButton(1);
+    SoftButton(2);
     return;// buttons;
 }
 
 void CMacro::CreateShortCut(uint8_t pos, const char* icon, const char* name)
 {
     uint16_t ypos = YOFFSET;
-    uint16_t xpos = XOFFSET + ((BUTSIZE + XSPACING) * pos);
-    if ((pos % 3) == 0 && pos > 0)
+    uint16_t xpos = XOFFSET + ((BUTSIZE + XSPACING) * ( pos % 3));
+    
+    if ( pos/3 > 0)
     {
         ypos = ypos + BUTSIZE + YSPACING;
-        xpos = XOFFSET;
+//        xpos = XOFFSET + (pos % 3);
     }
     ImageReader reader;
 
@@ -183,8 +237,9 @@ void CMacro::CreateShortCut(uint8_t pos, const char* icon, const char* name)
     tft.setFont(&FreeSans9pt7b);
     int16_t  x1, y1;
     uint16_t w, h;
+    tft.setTextColor(WHITE);
     tft.getTextBounds(name, 0, 20, &x1, &y1, &w, &h);
-    tft.setCursor(xpos + (BUTSIZE / 2) - (w / 2) - 2, ypos + h);
+    tft.setCursor(xpos + (BUTSIZE / 2) - (w / 2) - 2, ypos+10 );
     tft.print(name);
 }
 
@@ -231,16 +286,18 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
                         {
                             snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
                             Keyboard.print(key);
+                            printf("Keystring: %s\r\n", key);
                         }
                         else {
-//                            printf("metakey %s\r\n", key);
+                            printf("metakey %s\r\n", key);
                             Keyboard.press(metakeys[key]);
+
                         }
                     }
                     else if (key[0] != '\0') {
                         tolower(key[0]);
                         Keyboard.press(key[0]);
-//                        printf("Key %s\r\n", key);
+                        printf("Key %s\r\n", key);
                     }
                 }
                 Keyboard.releaseAll();
@@ -265,4 +322,43 @@ bool CMacro::isInside(uint16_t x, uint16_t y, uint16_t sz, uint16_t xpoint, uint
     if ((xpoint >= x && xpoint <= (x + sz)) && (ypoint >= y && ypoint <= (y + sz)))
         return 1;
     return 0;
+}
+
+int8_t CMacro::hitSoftButton( uint16_t xpoint, uint16_t ypoint)
+{
+//    printf("x: %i, y: %i\r\n", xpoint, ypoint);
+//    printf("x mod 80 : %i\r\n", xpoint / 80);
+    if (strlen(sbnames[xpoint / 80]) == 0 || sbnames[xpoint / 80][0] == '\0')
+        return -1;
+
+    if ((xpoint >= ((xpoint / 80) * 80) && xpoint <= ((xpoint / 80) * 80 + 80)) && (ypoint >= 212 && ypoint <= 240))
+    {
+        return xpoint / 80;
+    }
+    return -1;
+}
+void CMacro::SoftButton(uint8_t pos)
+{
+    SoftButton(pos, sbnames[pos]);
+}
+
+void CMacro::SoftButton(uint8_t pos, char* sbname)
+{
+    int16_t  x1, y1;
+    uint16_t w, h;
+//    tft.setCursor(pos, 200);
+    tft.setFont(&FreeSans12pt7b);
+    tft.setTextColor(BLACK);
+    if (sbname == NULL || strlen(sbname) == 0)
+    {
+        sbnames[pos][0] = '\0';
+        tft.fillRoundRect(1 + pos * 80, 212, 78, 32, 4, DARKERGREY);
+    }
+    else {
+        strncpy(sbnames[pos], sbname, sizeof(sbnames[0]));
+        tft.fillRoundRect(1 + pos * 80, 212, 78, 32, 4, LIGHTGREY);
+        tft.getTextBounds(sbname, 0, 20, &x1, &y1, &w, &h);
+        tft.setCursor(40 + (pos * 80) - (w / 2) - 2, 233);
+        tft.print(sbname);
+    }
 }

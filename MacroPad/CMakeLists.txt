@@ -21,12 +21,15 @@ project(${PROJECT} C CXX ASM)
 family_initialize_project(${PROJECT} ${CMAKE_CURRENT_LIST_DIR})
 #pico_sdk_init()
 
+
 add_executable(${PROJECT})
+pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_LIST_DIR}/Debounce/debounce.pio)
 
 target_include_directories(${PROJECT} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler
         ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader
+        ${CMAKE_CURRENT_SOURCE_DIR}/Debounce
 )        
 
 target_sources(${PROJECT} PUBLIC
@@ -37,6 +40,7 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/macrohandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/TinyUSB_Mouse_and_Keyboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader/ImageReader.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Debounce/debounce.cpp
 )
 
 pico_set_program_name(${PROJECT} "MacroPad")
@@ -51,8 +55,9 @@ pico_enable_stdio_uart(${PROJECT} 1)
 target_link_libraries(${PROJECT} PUBLIC
         pico_stdlib
         pico_bootsel_via_double_reset
-        hardware_spi
+#        hardware_spi
         hardware_gpio
+        hardware_pio
         touch
         GFX-lib
         FatFs_SPI

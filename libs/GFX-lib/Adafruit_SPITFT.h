@@ -325,7 +325,12 @@ private:
 
 // Some ready-made 16-bit ('565') color settings:
 #define BLACK 0x0000
+#define DARKERGREY 0x18E3
+#define DARKGREY 0x4208 
+#define GREY 0x8430
+#define LIGHTGREY 0xBDF7 
 #define WHITE 0xFFFF
+
 #define RED 0xF800
 #define GREEN 0x07E0
 #define BLUE 0x001F
