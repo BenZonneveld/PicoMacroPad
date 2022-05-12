@@ -1,14 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include<tusb.h>
+#include <tusb.h>
 #include <unordered_map>
+
+#include "MacroPad.h"
 #include "macrohandler.h"
 #include "ImageReader/ImageReader.h"
 
 //#include "reader.h" // JSON Reader
 //#include "filereadstream.h"
 #include "document.h"
-#include "MacroPad.h"
 #include "TinyUSB_Mouse_and_Keyboard.h"
 
 CMacro::CMacro()
@@ -77,22 +78,24 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
     uint16_t w, h;
     FIL fp;
     char pagename[64] = {0};
-    uint8_t res = device.mmc.f_open(&fp, (char*)"macro.json", FA_READ);
+    mount_card();
+    uint8_t res = f_open(&fp, (char*)"macro.json", FA_READ);
     printf("res: %i\r\n", res);
 
     char macrobuf[65535] = { 0 };
     UINT bread = 0;
     if (res == 0)
     {
-        device.mmc.f_read(&fp, macrobuf, 65535, &bread);
+        f_read(&fp, macrobuf, 65535, &bread);
         //   printf("Bytes read: %i\r\n", bread);
         //   printf("Macrobuf: %s\r\n", macrobuf);
     }
     else {
+        umount_card();
         return;
     }
-    device.mmc.f_close(&fp);
-    device.tft.fillScreen(BLACK);
+    f_close(&fp);
+    tft.fillScreen(BLACK);
     ParseResult ok = doc.Parse(macrobuf);
 
     printf("Parsed macro.json\r\n");
@@ -113,11 +116,11 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
         else {
             sprintf(pagename, "Page %i", page + 1);
         }
-        device.tft.setFont(&FreeSans12pt7b);
-        device.tft.setTextColor(WHITE);
-        device.tft.getTextBounds(pagename, 0, 20, &x1, &y1, &w, &h);
-        device.tft.setCursor((device.tft.width() / 2) - (w / 2) - 2, h);
-        device.tft.print(pagename);
+        tft.setFont(&FreeSans12pt7b);
+        tft.setTextColor(WHITE);
+        tft.getTextBounds(pagename, 0, 20, &x1, &y1, &w, &h);
+        tft.setCursor((tft.width() / 2) - (w / 2) - 2, h);
+        tft.print(pagename);
 
         Value& page = doc["page"][pageNmbr];
         assert(page.HasMember("button"));
@@ -143,13 +146,13 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
         }
     }
     else {
-        device.tft.fillScreen(WHITE);
-        device.tft.setCursor(0, 100);
-        device.tft.setTextSize(1);
-        device.tft.setFont(&FreeSans24pt7b);
-        device.tft.setTextColor(RED);
-        device.tft.println("Error in");
-        device.tft.println("macro.json.");
+        tft.fillScreen(WHITE);
+        tft.setCursor(0, 100);
+        tft.setTextSize(1);
+        tft.setFont(&FreeSans24pt7b);
+        tft.setTextColor(RED);
+        tft.println("Error in");
+        tft.println("macro.json.");
         printf("error in json\r\n");
     }
     return;// buttons;
@@ -164,21 +167,21 @@ void CMacro::CreateShortCut(uint8_t pos, const char* icon, const char* name)
         ypos = ypos + BUTSIZE + YSPACING;
         xpos = XOFFSET;
     }
-    ImageReader reader(device.mmc);
+    ImageReader reader;
 
-    uint8_t state = reader.drawBMP(icon, device.tft, xpos, ypos + 16);
-    device.tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 6, BLACK);
-    device.tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 4, BLACK);
-    device.tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 2, BLACK);
-    device.tft.drawRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, BLACK);
+    uint8_t state = reader.drawBMP(icon, tft, xpos, ypos + 16);
+    tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 6, BLACK);
+    tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 4, BLACK);
+    tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 2, BLACK);
+    tft.drawRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, BLACK);
 
-    device.tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 8, WHITE);
-    device.tft.setFont(&FreeSans9pt7b);
+    tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 8, WHITE);
+    tft.setFont(&FreeSans9pt7b);
     int16_t  x1, y1;
     uint16_t w, h;
-    device.tft.getTextBounds(name, 0, 20, &x1, &y1, &w, &h);
-    device.tft.setCursor(xpos + (BUTSIZE / 2) - (w / 2) - 2, ypos + h);
-    device.tft.print(name);
+    tft.getTextBounds(name, 0, 20, &x1, &y1, &w, &h);
+    tft.setCursor(xpos + (BUTSIZE / 2) - (w / 2) - 2, ypos + h);
+    tft.print(name);
 }
 
 bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
@@ -221,8 +224,8 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
                         Upper(key);
                         if (metakeys[key] == 0)
                         {
-                            device.tft.println("Invalid metakey.");
-                            device.tft.print(key);
+                            tft.println("Invalid metakey.");
+                            tft.print(key);
                             //return Pressed;
                         }
                         else {

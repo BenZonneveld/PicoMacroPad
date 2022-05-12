@@ -1,11 +1,9 @@
 #include "bsp/board.h"
 #include "tusb.h"
-//#include "Adafruit_GFX.h"
-//#include "Adafruit_SPITFT.h"
+#include "f_util.h"
+#include "ff.h"
+#include "hw_config.h"
 
-//#include "TFTSDTouch.h"
-#include "MacroPad.h"
-#include "mmc_sd.h"
 #if CFG_TUD_MSC
 
 // whether host does safe-eject
@@ -57,7 +55,7 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_size)
 {
   (void) lun;
-  *block_count = device.mmc.GetSectorCount();
+  *block_count = sd_sectors(sd_get_by_num(0));
   *block_size  = DISK_BLOCK_SIZE;
 }
 
@@ -92,10 +90,10 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   (void) lun;
 
   // out of disk
-  if ( lba >= device.mmc.GetSectorCount() ) return -1;
+  if ( lba >= sd_sectors(sd_get_by_num(0)) ) return -1;
 
 
-  device.mmc.ReadDisk((uint8_t*)buffer, lba, bufsize / 512);
+  sd_read_blocks(sd_get_by_num(0),(uint8_t*)buffer, lba, bufsize / 512);
 
   return bufsize;
 }
@@ -114,9 +112,9 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
   (void) lun;
 
   // out of disk
-  if ( lba >= device.mmc.GetSectorCount() ) return -1;
+  if ( lba >= sd_sectors(sd_get_by_num(0)) ) return -1;
 
-  device.mmc.WriteDisk(buffer,lba, bufsize/512);
+  sd_write_blocks(sd_get_by_num(0),buffer,lba, bufsize/512);
 
   return bufsize;
 }
