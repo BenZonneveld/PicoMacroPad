@@ -21,9 +21,10 @@
 #include "GFX-lib/Adafruit_GFX.h"
 #include "GFX-lib/Adafruit_SPITFT.h"
 
+#include "gpio_pins.h"
 #include "Touch.h"
-#include "MacroPad.h"
 #include "MacroHandler/macrohandler.h"
+#include "MacroPad.h"
 
 #define PROGMEM
 #include "fonts/FreeSans9pt7b.h"
@@ -33,10 +34,14 @@
 //Adafruit_SPITFT tft = Adafruit_SPITFT(240,320);
 //TFTSDTouch device = TFTSDTouch();
 
-float p = 3.1415926;
+#include "debounce.h"
 
 cTouch TP = cTouch();
 Adafruit_SPITFT tft = Adafruit_SPITFT();
+CMacro h_macro = CMacro();
+bool Pressed = false;
+uint16_t Xpoint0 = 0, Ypoint0 = 0xffff;
+Debounce debouncer;
 
 using namespace rapidjson;
 uint32_t millis()
@@ -44,12 +49,33 @@ uint32_t millis()
     return to_ms_since_boot(get_absolute_time());
 }
 
+void pname(uint16_t color)
+{
+    int16_t  x1, y1;
+    uint16_t w, h;
+
+    tft.setFont(&FreeSans12pt7b);
+    tft.setTextColor(color);
+    tft.getTextBounds(h_macro.getPageName(), 0, 20, &x1, &y1, &w, &h);
+    tft.setCursor((tft.width() / 2) - (w / 2) - 2, h);
+    tft.print(h_macro.getPageName());
+}
+
 int main(void) {
-    CMacro h_macro = CMacro();
-    uint8_t NumOfButtons = 1;
-    bool Pressed = false;
+    uint8_t  rgb = 0xff;
     stdio_init_all();
     printf("Hello! MacroPad debug.\r\n");
+
+    gpio_init(PIN_PAGE_PREV);
+    gpio_init(PIN_PAGE_NEXT);
+    gpio_set_dir(PIN_PAGE_PREV, GPIO_IN);
+    gpio_set_dir(PIN_PAGE_PREV, GPIO_IN);
+    gpio_pull_up(PIN_PAGE_PREV);
+    gpio_pull_up(PIN_PAGE_NEXT);
+
+    debouncer.debounce_gpio(PIN_PAGE_PREV);
+    debouncer.debounce_gpio(PIN_PAGE_NEXT);
+
     tusb_init();
     tft.init(240, 320);           // Init ST7789 320x240
 //    device.mmc.Init();
@@ -58,25 +84,30 @@ int main(void) {
 
     /*for (*/ uint8_t blue = (uint8_t)((BLUE & 0x001F) << 3);// blue > 0; blue--)
     //{
-        tft.fillScreen(tft.color565(0,0,blue));
+    tft.fillScreen(tft.color565(0, 0, BLACK));
     //}
-    TP.GetAdFac(); 
-//    device.TP.Adjust();
-    tft.setCursor(0, 100);
+    TP.GetAdFac();
+    //    device.TP.Adjust();
+    tft.setCursor(100, 100);
     tft.setTextSize(1);
     tft.setFont(&FreeSans24pt7b);
-    tft.println("STARTING UP");
+    tft.println("INIT");
 
+    h_macro.init();
     h_macro.getMacroPage(0);
 
     printf("Initialized\r\n");
-//    tft.setRotation(L2R_D2U);
 
-    uint16_t Xpoint0 = 0,Ypoint0 = 0xffff;
-    while(1)
+    //    gpio_set_irq_enabled_with_callback(TP_IRQ_PIN, GPIO_IRQ_EDGE_FALL, true, &inter_test);
+    while (1)
     {
         tud_task();
         hid_task();
+ 
+        if ( !debouncer.read(PIN_PAGE_NEXT))
+        {
+            printf("debouncer %d\r\n", debouncer.read(PIN_PAGE_NEXT));
+        }
         TP.Scan();
         if (TP.status().chStatus & TP_PRESS_DOWN)
         {
@@ -86,18 +117,38 @@ int main(void) {
                 continue;
             Xpoint0 = xpoint;
             Ypoint0 = ypoint;
-            if ( !Pressed)
-                Pressed = h_macro.checkHit(xpoint,ypoint);
+            if (!Pressed)
+                Pressed = h_macro.checkHit(xpoint, ypoint);
+            if (!Pressed)
+            {
+                int8_t sb = h_macro.hitSoftButton(xpoint, ypoint);
+                if (sb >= 0)
+                {
+                    Pressed = true;
+                    printf("Hit SoftButton %d\r\n", sb);
+                    switch (sb)
+                    {
+                    case 0:
+                        h_macro.PrevPage();
+                        break;
+                    case 1:
+                        break;
+                    case 2:
+                        break;
+                    case 3:
+                        h_macro.NextPage();
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
         }
         else {
             Pressed = false;
         }
-        ;
     }
-    return 0;
 }
-
-
 //--------------------------------------------------------------------+
 // Device callbacks
 //--------------------------------------------------------------------+
