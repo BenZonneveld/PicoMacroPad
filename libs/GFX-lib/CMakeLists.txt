@@ -13,5 +13,6 @@ target_include_directories(GFX-lib INTERFACE
 target_link_libraries(GFX-lib INTERFACE
         hardware_spi
         hardware_dma
+		hardware_pwm
         pico_stdlib
 )
