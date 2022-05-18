@@ -34,6 +34,8 @@
 #include "pico/binary_info.h"
 #include <limits.h>
 #include <hardware/spi.h>
+#include <hardware/irq.h>
+#include <hardware/pwm.h>
 #include "Adafruit_SPITFT.h"
 
 
@@ -42,6 +44,7 @@
 #define TFT_SOFT_SPI 1 ///< Display interface = software SPI
 #define TFT_PARALLEL 2 ///< Display interface = 8- or 16-bit parallel
 
+uint8_t Adafruit_SPITFT::bkl;
 // CONSTRUCTORS ------------------------------------------------------------
 
 /*!
@@ -908,10 +911,14 @@ void Adafruit_SPITFT::displayInit(const uint8_t* addr) {
     uint8_t numCommands, cmd, numArgs;
     uint16_t ms;
 
-    gpio_init(LCD_BKL_PIN);
-    gpio_set_dir(LCD_BKL_PIN, GPIO_OUT);
-    gpio_put(LCD_BKL_PIN, 1);
+#ifndef BACKPWM
 
+ //   gpio_init(LCD_BKL_PIN);
+ //   gpio_set_dir(LCD_BKL_PIN, GPIO_OUT);
+ //   gpio_put(LCD_BKL_PIN, 1);
+#else
+    setBacklightPWM(255);
+#endif
     startWrite();
     numCommands = *(addr++); // Number of commands to follow
     while (numCommands--) {              // For each command...
@@ -1094,6 +1101,17 @@ static const uint8_t st7789[] = {                // Init commands for 7789 scree
 
 // clang-format on
 
+void Adafruit_SPITFT::setBacklightPWM(uint8_t brightness)
+{
+    bkl = brightness;
+    pwm_set_gpio_level(LCD_BKL_PIN, 0xff * 0xff);
+}
+
+void Adafruit_SPITFT::onWrap()
+{
+    pwm_clear_irq(pwm_gpio_to_slice_num(LCD_BKL_PIN));
+    pwm_set_gpio_level(LCD_BKL_PIN, bkl * bkl);
+}
 /**************************************************************************/
 /*!
     @brief  Initialization code common to all ST7789 displays
@@ -1120,15 +1138,33 @@ void Adafruit_SPITFT::init(uint16_t width, uint16_t height) {
     gpio_set_dir(LCD_RST_PIN, GPIO_OUT);
     gpio_set_dir(LCD_CS_PIN, GPIO_OUT);
     gpio_set_dir(LCD_DC_PIN, GPIO_OUT);
-    gpio_set_dir(LCD_BKL_PIN, GPIO_OUT);
+//    
     gpio_set_dir(TP_CS_PIN, GPIO_OUT);
     gpio_set_dir(TP_IRQ_PIN, GPIO_IN);
     gpio_set_dir(SD_CS_PIN, GPIO_OUT);
     gpio_set_pulls(TP_IRQ_PIN, true, false);
 
+#ifndef BACKPWM
+    gpio_set_dir(LCD_BKL_PIN, GPIO_OUT);
+    gpio_put(LCD_BKL_PIN, 1);
+#else
+    gpio_set_dir(LCD_BKL_PIN, GPIO_FUNC_PWM);
+//    uint slice_num = pwm_gpio_to_slice_num(LCD_BKL_PIN);
+
+    //pwm_clear_irq(slice_num);
+    //pwm_set_irq_enabled(slice_num, true);
+    //irq_set_exclusive_handler(PWM_IRQ_WRAP, onWrap);
+    //irq_set_enabled(PWM_IRQ_WRAP, true);
+
+    //pwm_config config = pwm_get_default_config();
+    //pwm_config_set_clkdiv(&config, 4.f);
+    //pwm_init(slice_num, &config, true);
+//    pwm_set_wrap(slice_num, 0xfff);
+//    pwm_set_enabled(slice_num, true);
+//    setBacklightPWM(0xff);
+#endif
     gpio_put(TP_CS_PIN, 1);
     gpio_put(LCD_CS_PIN, 1);
-    gpio_put(LCD_BKL_PIN, 1);
     gpio_put(SD_CS_PIN, 1);
     // SPI Init
     spi_init(spi1, SPI_LCD_FREQ);

@@ -63,7 +63,23 @@ void pname(uint16_t color)
     tft.print(h_macro.getPageName());
 }
 
+void loadJSON()
+{
+    if (! h_macro.loadJSON())
+    {
+        tft.fillScreen(WHITE);
+        tft.setCursor(0, 100);
+        tft.setTextSize(1);
+        tft.setFont(&FreeSans24pt7b);
+        tft.setTextColor(RED);
+        tft.println("Error in");
+        tft.println("macro.json.");
+        printf("error in json\r\n");
+    }
+}
+
 int main(void) {
+    int8_t sb = -1;
     uint8_t  rgb = 0xff;
     stdio_init_all();
     printf("Hello! MacroPad debug.\r\n");
@@ -118,7 +134,7 @@ int main(void) {
     tft.println("INIT");
 
     h_macro.init();
-    h_macro.getMacroPage(0);
+    h_macro.getPage(0);
 
     printf("Initialized\r\n");
 
@@ -158,26 +174,10 @@ int main(void) {
                 Pressed = h_macro.checkHit(xpoint, ypoint);
             if (!Pressed)
             {
-                int8_t sb = h_macro.hitSoftButton(xpoint, ypoint);
+                sb = h_macro.hitSoftButton(xpoint, ypoint);
                 if (sb >= 0)
                 {
                     Pressed = true;
-                    printf("Hit SoftButton %d\r\n", sb);
-                    switch (sb)
-                    {
-                    case 0:
-                        h_macro.PrevPage();
-                        break;
-                    case 1:
-                        break;
-                    case 2:
-                        break;
-                    case 3:
-                        h_macro.NextPage();
-                        break;
-                    default:
-                        break;
-                    }
                 }
             }
         }

@@ -54,7 +54,7 @@
 #ifdef __AVR__
 #define BUFPIXELS 24 ///<  24 * 5 =  120 bytes
 #else
-#define BUFPIXELS 8192 ///< 200 * 5 = 1000 bytes
+#define BUFPIXELS 64*64 ///< 200 * 5 = 1000 bytes
 #endif
 
 // Image CLASS ****************************************************
@@ -257,7 +257,7 @@ ImageReader::~ImageReader(void) {
 ImageReturnCode ImageReader::drawBMP(const char *filename,
                                               Adafruit_SPITFT &tft, int16_t x,
                                               int16_t y) {
-  uint16_t tftbuf[BUFPIXELS]; // Temp space for buffering TFT data
+//  uint16_t tftbuf[BUFPIXELS]; // Temp space for buffering TFT data
   // Call core BMP-reading function, passing address to TFT object,
   // TFT working buffer, and X & Y position of top-left corner (image
   // will be cropped on load if necessary). Image pointer is NULL when
@@ -402,11 +402,20 @@ ImageReturnCode ImageReader::coreBMP(
         loadX = 0;
         loadY = 0;
 
-        uint8_t* sdbuf = (uint8_t *)calloc(3 * loadWidth, sizeof(uint8_t)); // BMP read buf (R+G+B/pixel)
-        uint16_t srcidx = sizeof sdbuf;
+        uint8_t* sdbuf;
+        uint16_t srcidx;
+        if (loadWidth == 64)
+        {
+            sdbuf = (uint8_t*)calloc(3 * BUFPIXELS, sizeof(uint8_t));
+            srcidx = sizeof sdbuf;
+        }
+        else {
+            sdbuf = (uint8_t*)calloc(3 * loadWidth, sizeof(uint8_t)); // BMP read buf (R+G+B/pixel)
+            srcidx = sizeof sdbuf;
+        }
         if (dest == NULL)
         {
-            dest = (uint16_t*)calloc(loadWidth,sizeof(uint16_t));
+            dest = (uint16_t*)calloc(BUFPIXELS, sizeof(uint16_t));
         }
 
         if (tft) {
@@ -455,8 +464,8 @@ ImageReturnCode ImageReader::coreBMP(
 
                     if ((loadWidth > 0) && (loadHeight > 0)) { // Clip top/left
                         if (tft) {
-                            tft->setRotation(3);
-                            tft->setAddrWindow((tft->width() - loadWidth)- x, (tft->height() - loadHeight) - y, loadWidth, loadHeight);
+//                            tft->setRotation(3);
+                            tft->setAddrWindow(/*(tft->width() - loadWidth) - */x,/*(tft->height() - loadHeight) - */y, loadWidth, loadHeight);
                             //              tft->setCursor(x, y);
                         }
                         else {
@@ -482,6 +491,7 @@ ImageReturnCode ImageReader::coreBMP(
                                 }
                             }
 
+                            f_read(&file, sdbuf, 3 * BUFPIXELS, &BytesRead);
                             for (row = 0; row < loadHeight; row++) { // For each scanline...
                               // Seek to start of scan line.  It might seem labor-intensive
                               // to be doing this on every line, but this method covers a
@@ -489,46 +499,29 @@ ImageReturnCode ImageReader::coreBMP(
                               // padding. Also, the seek only takes place if the file
                               // position actually needs to change (avoids a lot of cluster
                               // math in SD library).
-                                f_read(&file, sdbuf, 3 * loadWidth, &BytesRead);
-/*                                if (flip) // Bitmap is stored bottom-to-top order (normal BMP)
-                                    bmpPos = offset + (bmpHeight - 1 - (row + loadY)) * rowSize;
-                                else // Bitmap is stored top-to-bottom
-                                    bmpPos = offset + (row + loadY) * rowSize;
-                                if (depth == 24) {
-                                    bmpPos += loadX * 3;
-                                }
-                                else {
-                                    bmpPos += loadX / 8;
-                                    bitIn = 7 - (loadX & 7);
-                                    bitOut = 0x80;
-                                    if (img)
-                                        destidx = ((bmpWidth + 7) / 8) * row;
-                                }*/
-
+                                
                                 for (col = 0; col < loadWidth; col++) { // For each pixel...
                                     uint16_t k;
 //                                    sleep_ms(5);
                                     if (depth == 24) {
                                         // Convert each pixel from BMP to 565 format, save in dest
-                                        k = col * 3;
+                                        k = (col + (row * loadWidth)) * 3;
                                         if (flip)
                                         {
-                                            dest[loadWidth - col] = (uint16_t)((sdbuf[k + 2] >> 3) << 11) | ((sdbuf[k + 1] >> 2) << 5) | (sdbuf[k] >> 3);
+                                            dest[BUFPIXELS - ((loadWidth -col) + (row * loadWidth))] = (uint16_t)((sdbuf[k + 2] >> 3) << 11) | ((sdbuf[k + 1] >> 2) << 5) | (sdbuf[k] >> 3);
                                         }
                                         else {
-                                            dest[col] = (uint16_t)((sdbuf[k + 2] >> 3) << 11) | ((sdbuf[k + 1] >> 2) << 5) | (sdbuf[k] >> 3);
+                                            dest[(loadWidth - col) + (row * loadWidth)] = (uint16_t)((sdbuf[k + 2] >> 3) << 11) | ((sdbuf[k + 1] >> 2) << 5) | (sdbuf[k] >> 3);
                                         }//srcidx += 3;
                                     }                                    
                                 }                // end pixel loop
 
-                                if (tft) {       // Drawing to TFT?
-                                    if (loadWidth) { // Any remainders?
-                                    //  // See notes above re: DMA
-                                    //    tft->setAddrWindow(x,  (y + loadHeight) - row, loadWidth, 1);
-                                        tft->writePixels(&dest[0], loadWidth, true, false); // Write it
-                                    }
-                                }
                             } // end scanline loop
+                            if (tft) {       // Drawing to TFT?
+                                if (loadWidth) { // Any remainders?
+                                    tft->writePixels(&dest[0], BUFPIXELS, true, false); // Write it
+                                }
+                            }
 
                             if (quantized) {
                                 if (tft)

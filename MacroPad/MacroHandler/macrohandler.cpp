@@ -12,11 +12,26 @@
 #include "document.h"
 #include "TinyUSB_Mouse_and_Keyboard.h"
 
+uint8_t CMacro::max_page;
+uint8_t CMacro:: page;
+Value CMacro::buttons;
+char CMacro::pagename[64];
+char CMacro::sbnames[4][10];
+std::array<void(*)(), 4>CMacro::mButtonCallback;
+Document CMacro::doc;
+ParseResult CMacro::prOk;
+
 CMacro::CMacro()
 {
-    buttons = 0;
+//    buttons = 0;
     Keyboard.begin();
-//    metakeys["LEFT_CTRL"] = LEFT_CTRL;
+//    max_page = 0;
+//    page = 0;
+//    pagename = '\0';
+    *sbnames[0] = '\0';
+    *sbnames[1] = '\0';
+    *sbnames[2] = '\0';
+    *sbnames[3] = '\0';
 
     metakeys = {
         {"LEFT_CTRL",0x80},
@@ -75,18 +90,20 @@ CMacro::CMacro()
 
 void CMacro::init()
 {
-    SoftButton(0, NULL);
-    SoftButton(1, NULL);
-    SoftButton(2, NULL);
-    SoftButton(3, NULL);
+    loadJSON();
+    SoftButton(0, NULL, NULL);
+    SoftButton(1, NULL, NULL);
+    SoftButton(2, NULL, NULL);
+    SoftButton(3, NULL, NULL);
 }
 
 void CMacro::PrevPage()
 {
+    printf("PrevPage\r\n");
     if (page > 0)
     {
         page--;
-        getMacroPage(page);
+        getPage(page);
     }
 }
 
@@ -95,20 +112,20 @@ void CMacro::NextPage()
     if (page + 1 < max_page)
     {
         page++;
-        getMacroPage(page);
+        getPage(page);
     }
 }
 
-void CMacro::getCurrentPage()
-{
-    getMacroPage(page);
-}
+//void CMacro::getCurrentPage()
+//{
+//    getMacroPage(page);
+//}
 
-void CMacro::getMacroPage(uint8_t pageNmbr)
+bool CMacro::loadJSON()
 {
-    int16_t  x1, y1;
-    uint16_t w, h;
     FIL fp;
+    uint32_t mytime = to_ms_since_boot(get_absolute_time());
+
     mount_card();
     uint8_t res = f_open(&fp, (char*)"macro.json", FA_READ);
     printf("res: %i\r\n", res);
@@ -121,93 +138,106 @@ void CMacro::getMacroPage(uint8_t pageNmbr)
     }
     else {
         umount_card();
-        return;
+        return false;
     }
     f_close(&fp);
-    tft.fillScreen(BLACK);
-    ParseResult ok = doc.Parse(macrobuf);
 
+    mytime = to_ms_since_boot(get_absolute_time()) - mytime;
+    printf("json parse took %" PRIu32 " milliseconds.\r\n", mytime);
+    prOk = doc.Parse(macrobuf);
+
+    umount_card();
     printf("Parsed macro.json\r\n");
-    if (ok)
+
+    if (prOk)
     {
-        assert(doc.HasMember("page"));
-        const Value& pages = doc["page"];
-        if (pageNmbr >= pages.Size())
-        {
-            return;
-        }
-        page = pageNmbr;
-        max_page = pages.Size();
-
-        printf("max_page %i\r\n", max_page);
-
-        if (doc["page"][page].HasMember("name"))
-        {
-            sprintf(pagename, "%s", doc["page"][page]["name"].GetString());
-        }
-        else {
-            sprintf(pagename, "Page %i", page + 1);
-        }
-        tft.setFont(&FreeSans12pt7b);
-        
-        tft.setTextColor(WHITE);
-        tft.getTextBounds(pagename, 0, 20, &x1, &y1, &w, &h);
-        tft.fillRect(0, 0, tft.width(), h + 4 , DARKGREY);
-        tft.setCursor((tft.width() / 2) - (w / 2) - 2, h);
-        
-        tft.print(pagename);
-
-        if (max_page > 1 && (page+1) < max_page) // Indicate next pages available
-        {
-//            tft.fillTriangle(320, h / 2, 300, 0, 300, h, GREEN);
-            SoftButton(3, (char*)"Page +");
-        } else{
-            SoftButton(3, NULL);
-        }
-        if (max_page > 1 && page > 0) // Indicate previous pages available
-        {
-            SoftButton(0, (char*)"Page -");
-//            tft.fillTriangle(0, h / 2, 20, 0, 20, h, GREEN);
-        }
-        else {
-            SoftButton(0, NULL);
-        }
-
-        Value& page = doc["page"][pageNmbr];
-        assert(page.HasMember("button"));
-        buttons = page["button"];
-        assert(buttons.IsArray());
-        for (SizeType i = 0; i < buttons.Size(); i++) // Uses SizeType instead of size_t
-        {
-            const Value& but = buttons[i];
-            assert(but.IsArray());
-            assert(but.HasMember["icon"]);
-            assert(but["icon"].IsString());
-            assert(but.HasMember["name"]);
-            assert(but["name"].IsString());
-            assert(but.HasMember["keys"]);
-            assert(but["keys"].IsArray());
-
-            //        printf("Pos: %i\r\n", but["pos"].GetInt());
-            //        printf("Icon: %s\r\n", but["icon"].GetString());
-    //        printf("name: %s\r\n", but["name"].GetString());
-            //        printf("keys: %s\r\n", but["keys"].GetArray());
-
-            CreateShortCut(i, but["icon"].GetString(), but["name"].GetString());
-        }
+        return true;
     }
     else {
-        tft.fillScreen(WHITE);
-        tft.setCursor(0, 100);
-        tft.setTextSize(1);
-        tft.setFont(&FreeSans24pt7b);
-        tft.setTextColor(RED);
-        tft.println("Error in");
-        tft.println("macro.json.");
-        printf("error in json\r\n");
+        return false;
+    }
+}
+
+void CMacro::getPage(uint8_t pageNmbr)
+{
+    int16_t  x1, y1;
+    uint16_t w, h;
+
+    if (!prOk)
+    {
+        return;
+    }
+    tft.fillScreen(BLACK);
+    gpio_put(LCD_BKL_PIN, 0);
+
+    mount_card();
+    assert(doc.HasMember("page"));
+    const Value& pages = doc["page"];
+    if (pageNmbr >= pages.Size())
+    {
+        gpio_put(LCD_BKL_PIN, 1);
+        return;
+    }
+    page = pageNmbr;
+    max_page = pages.Size();
+
+    printf("max_page %i\r\n", max_page);
+
+
+    if (doc["page"][page].HasMember("name"))
+    {
+        sprintf(pagename, "%s", doc["page"][page]["name"].GetString());
+    }
+    else {
+        sprintf(pagename, "Page %i", page + 1);
+    }
+    tft.setFont(&FreeSans12pt7b);
+    tft.setTextColor(WHITE);
+    tft.getTextBounds(pagename, 0, 20, &x1, &y1, &w, &h);
+    tft.fillRect(0, 0, tft.width(), h + 4, DARKGREY);
+    tft.setCursor((tft.width() / 2) - (w / 2) - 2, h);
+    tft.print(pagename);
+
+
+    if (max_page > 1 && (page + 1) < max_page) // Indicate next pages available
+    {
+        //            tft.fillTriangle(320, h / 2, 300, 0, 300, h, GREEN);
+        SoftButton(3, (char*)"Page +", &CMacro::NextPage);
+    }
+    else {
+        SoftButton(3, NULL, NULL);
+    }
+    if (max_page > 1 && page > 0) // Indicate previous pages available
+    {
+        SoftButton(0, (char*)"Page -", &CMacro::PrevPage);
+        //            tft.fillTriangle(0, h / 2, 20, 0, 20, h, GREEN);
+    }
+    else {
+        SoftButton(0, NULL, NULL);
+    }
+
+
+    Value& page = doc["page"][pageNmbr];
+    assert(page.HasMember("button"));
+    buttons = page["button"];
+    assert(buttons.IsArray());
+    for (SizeType i = 0; i < buttons.Size(); i++) // Uses SizeType instead of size_t
+    {
+        const Value& but = buttons[i];
+        assert(but.IsArray());
+        assert(but.HasMember["icon"]);
+        assert(but["icon"].IsString());
+        assert(but.HasMember["name"]);
+        assert(but["name"].IsString());
+        assert(but.HasMember["keys"]);
+        assert(but["keys"].IsArray());
+        CreateShortCut(i, but["icon"].GetString(), but["name"].GetString());
     }
     SoftButton(1);
     SoftButton(2);
+    umount_card();
+    gpio_put(LCD_BKL_PIN, 1);
+
     return;// buttons;
 }
 
@@ -219,15 +249,14 @@ void CMacro::CreateShortCut(uint8_t pos, const char* icon, const char* name)
     if ( pos/3 > 0)
     {
         ypos = ypos + BUTSIZE + YSPACING;
-//        xpos = XOFFSET + (pos % 3);
     }
     ImageReader reader;
 
     uint32_t mytime = to_ms_since_boot(get_absolute_time());
     uint8_t state = reader.drawBMP(icon, tft, xpos, ypos + 16);
     mytime = to_ms_since_boot(get_absolute_time()) - mytime;
+    printf("reader.drawBMP took %" PRIu32 " milliseconds.\r\n", mytime);
 
-    printf("drawBMP took %" PRIu32 " milliseconds.\r\n", mytime);
     tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 6, BLACK);
     tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 4, BLACK);
     tft.drawRoundRect(xpos, ypos + 16, BUTSIZE, BUTSIZE, 2, BLACK);
@@ -327,22 +356,27 @@ bool CMacro::isInside(uint16_t x, uint16_t y, uint16_t sz, uint16_t xpoint, uint
 int8_t CMacro::hitSoftButton( uint16_t xpoint, uint16_t ypoint)
 {
 //    printf("x: %i, y: %i\r\n", xpoint, ypoint);
-//    printf("x mod 80 : %i\r\n", xpoint / 80);
+//    printf("x/80 : %i\r\n", xpoint / 80);
     if (strlen(sbnames[xpoint / 80]) == 0 || sbnames[xpoint / 80][0] == '\0')
         return -1;
 
+    if (xpoint > tft.width()) xpoint = tft.width();
+
     if ((xpoint >= ((xpoint / 80) * 80) && xpoint <= ((xpoint / 80) * 80 + 80)) && (ypoint >= 212 && ypoint <= 240))
     {
+//        printf("Button %i hit\r\n", uint8_t(xpoint / 80));
+        if (mButtonCallback[xpoint/80] != nullptr) mButtonCallback[xpoint/80]();
         return xpoint / 80;
     }
     return -1;
 }
+
 void CMacro::SoftButton(uint8_t pos)
 {
-    SoftButton(pos, sbnames[pos]);
+    SoftButton(pos, sbnames[pos], NULL);
 }
 
-void CMacro::SoftButton(uint8_t pos, char* sbname)
+void CMacro::SoftButton(uint8_t pos, char* sbname, void(* action)())
 {
     int16_t  x1, y1;
     uint16_t w, h;
@@ -353,12 +387,18 @@ void CMacro::SoftButton(uint8_t pos, char* sbname)
     {
         sbnames[pos][0] = '\0';
         tft.fillRoundRect(1 + pos * 80, 212, 78, 32, 4, DARKERGREY);
+        mButtonCallback[pos] = nullptr;
     }
     else {
+        //if (action == nullptr && mButtonCallback[pos] != nullptr )
+        //{
+        //    action = mButtonCallback[pos];
+        //}
         strncpy(sbnames[pos], sbname, sizeof(sbnames[0]));
         tft.fillRoundRect(1 + pos * 80, 212, 78, 32, 4, LIGHTGREY);
         tft.getTextBounds(sbname, 0, 20, &x1, &y1, &w, &h);
         tft.setCursor(40 + (pos * 80) - (w / 2) - 2, 233);
         tft.print(sbname);
+        mButtonCallback[pos] = action;
     }
 }
