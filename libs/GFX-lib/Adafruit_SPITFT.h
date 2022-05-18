@@ -246,7 +246,8 @@ public:
     /*
     * Backlight PWM
     */
-    void setBacklightPWM(uint8_t brightness);
+    void setBacklight(uint8_t brightness);
+    uint8_t getBacklight() { return bkl; }
 protected:
     // CLASS INSTANCE VARIABLES --------------------------------------------
 
@@ -255,10 +256,10 @@ protected:
     // interfaces. This is to save some memory, since a display's connection
     // will be only one of these. The order of some things is a little weird
     // in an attempt to get values to align and pack better in RAM.
-    static uint8_t bkl;
     uint32_t _freq; ///< SPI bitrate (if no SPI transactions)
     uint32_t _mode; ///< SPI data mode (transactions or no)
 
+    uint8_t bkl = 255;
     int16_t _xstart = 0;          ///< Internal framebuffer X offset
     int16_t _ystart = 0;          ///< Internal framebuffer Y offset
     uint8_t invertOnCommand = 0;  ///< Command to enable invert mode
@@ -267,7 +268,6 @@ protected:
     uint8_t _colstart2 = 0, ///< Offset from the right
         _rowstart2 = 0;     ///< Offset from the bottom
 
-    static void onWrap();
     void displayInit(const uint8_t* addr);
     void setColRowStart(int8_t col, int8_t row);
     //uint32_t _freq = 0; ///< Dummy var to keep subclasses happy

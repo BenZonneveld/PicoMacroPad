@@ -99,7 +99,6 @@ void CMacro::init()
 
 void CMacro::PrevPage()
 {
-    printf("PrevPage\r\n");
     if (page > 0)
     {
         page--;
@@ -128,7 +127,6 @@ bool CMacro::loadJSON()
 
     mount_card();
     uint8_t res = f_open(&fp, (char*)"macro.json", FA_READ);
-    printf("res: %i\r\n", res);
 
     char macrobuf[65535] = { 0 };
     UINT bread = 0;
@@ -162,20 +160,20 @@ void CMacro::getPage(uint8_t pageNmbr)
 {
     int16_t  x1, y1;
     uint16_t w, h;
-
+    uint8_t pwm_tmp = tft.getBacklight();
     if (!prOk)
     {
         return;
     }
     tft.fillScreen(BLACK);
-    gpio_put(LCD_BKL_PIN, 0);
+    tft.setBacklight(0);
 
     mount_card();
     assert(doc.HasMember("page"));
     const Value& pages = doc["page"];
     if (pageNmbr >= pages.Size())
     {
-        gpio_put(LCD_BKL_PIN, 1);
+        tft.setBacklight(pwm_tmp);
         return;
     }
     page = pageNmbr;
@@ -236,8 +234,7 @@ void CMacro::getPage(uint8_t pageNmbr)
     SoftButton(1);
     SoftButton(2);
     umount_card();
-    gpio_put(LCD_BKL_PIN, 1);
-
+    tft.setBacklight(pwm_tmp);
     return;// buttons;
 }
 

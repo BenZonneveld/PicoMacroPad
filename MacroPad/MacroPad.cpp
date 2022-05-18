@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include "pico/binary_info.h"
 
+#include <hardware/pwm.h>
+#include <hardware/irq.h>
 //#include <hardware/spi.h>
 #include "bsp/board.h"
 #include "tusb.h"
@@ -44,6 +46,8 @@ CMacro h_macro = CMacro();
 bool Pressed = false;
 uint16_t Xpoint0 = 0, Ypoint0 = 0xffff;
 Debounce debouncer;
+static int fade;
+bool invert = false;
 
 using namespace rapidjson;
 uint32_t millis()
@@ -78,7 +82,46 @@ void loadJSON()
     }
 }
 
+bool on_pwm_wrap(struct repeating_timer* t) {
+    static bool going_up = true;
+    if (fade > MAXFADE)
+        going_up = false;
+    // Clear the interrupt flag that brought us here
+//    pwm_clear_irq(pwm_gpio_to_slice_num(LCD_BKL_PIN));
+    if (going_up) {
+        ++fade;
+        if (fade > MAXFADE) {
+            fade = MAXFADE;
+            going_up = false;
+        }
+    }
+    else {
+        if (fade > MAXFADE)
+        {
+            fade -= 2;
+        }
+        else
+        {
+            --fade;
+        }
+        if (fade < 16) {
+            fade = 16;
+            going_up = true;
+            tft.invertDisplay(invert);
+            invert = !invert;
+        }
+    }
+    // Square the fade value to make the LED's brightness appear more linear
+    // Note this range matches with the wrap value
+    pwm_set_gpio_level(LCD_BKL_PIN, fade * fade);
+    return true;
+}
+
 int main(void) {
+    bool sleep_mode = false;
+    struct repeating_timer timer;
+    uint32_t idle_time;
+    uint32_t us_time = to_ms_since_boot(get_absolute_time());
     int8_t sb = -1;
     uint8_t  rgb = 0xff;
     stdio_init_all();
@@ -136,7 +179,13 @@ int main(void) {
     h_macro.init();
     h_macro.getPage(0);
 
+//    pwm_clear_irq(pwm_gpio_to_slice_num(LCD_BKL_PIN));
+//    pwm_set_irq_enabled(pwm_gpio_to_slice_num(LCD_BKL_PIN), true);
+//    irq_set_exclusive_handler(PWM_IRQ_WRAP, on_pwm_wrap);
+//    irq_set_enabled(PWM_IRQ_WRAP, false);
+
     printf("Initialized\r\n");
+//    us_time = to_us_since_boot(get_absolute_time());
 
     //    gpio_set_irq_enabled_with_callback(TP_IRQ_PIN, GPIO_IRQ_EDGE_FALL, true, &inter_test);
     while (1)
@@ -180,10 +229,38 @@ int main(void) {
                     Pressed = true;
                 }
             }
+            us_time = to_ms_since_boot(get_absolute_time());
         }
         else {
             Pressed = false;
         }
+
+        idle_time = to_ms_since_boot(get_absolute_time()) - us_time;
+
+        if (Pressed)
+            idle_time = 0;
+
+        //if (to_ms_since_boot(get_absolute_time()) % 1000 == 0)
+        //    printf("idle_time: %lu\r\n", idle_time);
+        if ((idle_time /1000) > MAXIDLE)
+        {
+            if (!sleep_mode)
+            {
+                fade = tft.getBacklight();
+                add_repeating_timer_ms(6554/MAXFADE, on_pwm_wrap, NULL, &timer);
+                sleep_mode = true;
+            }
+        }
+        else {
+            if (sleep_mode)
+            {
+                cancel_repeating_timer(&timer);
+                tft.invertDisplay(false);
+                tft.setBacklight(255);
+                sleep_mode = false;
+            }
+        }
+//        printf("timer: %p\r\n", timer);
     }
 }
 //--------------------------------------------------------------------+

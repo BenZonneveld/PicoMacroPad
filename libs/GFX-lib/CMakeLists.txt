@@ -14,5 +14,6 @@ target_link_libraries(GFX-lib INTERFACE
         hardware_spi
         hardware_dma
 		hardware_pwm
+		hardware_gpio
         pico_stdlib
 )
