@@ -34,6 +34,7 @@ target_include_directories(${PROJECT} PUBLIC
 
 target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroPad.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tud.c
   ${CMAKE_CURRENT_SOURCE_DIR}/msc_disk.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
   ${CMAKE_CURRENT_SOURCE_DIR}/hw_config.c
@@ -55,7 +56,7 @@ pico_enable_stdio_uart(${PROJECT} 1)
 target_link_libraries(${PROJECT} PUBLIC
         pico_stdlib
         pico_bootsel_via_double_reset
-#        hardware_spi
+        hardware_watchdog
         hardware_gpio
         hardware_pio
         touch

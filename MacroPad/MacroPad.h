@@ -13,13 +13,18 @@ extern const GFXfont FreeSans24pt7b;
 extern cTouch TP;
 extern Adafruit_SPITFT tft;
 
-#define MAXIDLE 5
-#define MAXFADE 128
-#define PIN_SB0 2
-#define PIN_SB1	3
-#define PIN_SB2	4
-#define PIN_SB3	5
+#define MAXIDLE 30
+#define MAXFADE 96
+#define PIN_SB3 2
+#define PIN_SB2	3
+#define PIN_SB1	4
+#define PIN_SB0	5
+#define SB0 0x1
+#define SB1 0x2
+#define SB2 0x4
+#define SB3 0x8
 // uint64_t us_time;
 int main(void);
-void hid_task(void);
-void inter_test(uint gpio, uint32_t events);
+void taskloop();
+void doSoftButtons();
+void gpio_callback(uint gpio, uint32_t events);

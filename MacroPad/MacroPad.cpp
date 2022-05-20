@@ -7,9 +7,11 @@
 
 #include <hardware/pwm.h>
 #include <hardware/irq.h>
+#include <hardware/watchdog.h>
+
 //#include <hardware/spi.h>
-#include "bsp/board.h"
-#include "tusb.h"
+#include <bsp/board.h>
+#include <tusb.h>
 #include "usb_descriptors.h"
 
 /* FAT FS */
@@ -43,28 +45,17 @@
 cTouch TP = cTouch();
 Adafruit_SPITFT tft = Adafruit_SPITFT();
 CMacro h_macro = CMacro();
-bool Pressed = false;
-uint16_t Xpoint0 = 0, Ypoint0 = 0xffff;
 Debounce debouncer;
+static uint8_t sb_pressed = 0;
 static int fade;
-bool invert = false;
+static uint32_t btnTimeStamp = 0;
+uint8_t sbuttons = 0;
+bool buttons_read = false;
 
 using namespace rapidjson;
 uint32_t millis()
 {
     return to_ms_since_boot(get_absolute_time());
-}
-
-void pname(uint16_t color)
-{
-    int16_t  x1, y1;
-    uint16_t w, h;
-
-    tft.setFont(&FreeSans12pt7b);
-    tft.setTextColor(color);
-    tft.getTextBounds(h_macro.getPageName(), 0, 20, &x1, &y1, &w, &h);
-    tft.setCursor((tft.width() / 2) - (w / 2) - 2, h);
-    tft.print(h_macro.getPageName());
 }
 
 void loadJSON()
@@ -82,7 +73,7 @@ void loadJSON()
     }
 }
 
-bool on_pwm_wrap(struct repeating_timer* t) {
+bool autofade(struct repeating_timer* t) {
     static bool going_up = true;
     if (fade > MAXFADE)
         going_up = false;
@@ -107,8 +98,6 @@ bool on_pwm_wrap(struct repeating_timer* t) {
         if (fade < 16) {
             fade = 16;
             going_up = true;
-            tft.invertDisplay(invert);
-            invert = !invert;
         }
     }
     // Square the fade value to make the LED's brightness appear more linear
@@ -118,15 +107,12 @@ bool on_pwm_wrap(struct repeating_timer* t) {
 }
 
 int main(void) {
-    bool sleep_mode = false;
-    struct repeating_timer timer;
-    uint32_t idle_time;
-    uint32_t us_time = to_ms_since_boot(get_absolute_time());
-    int8_t sb = -1;
-    uint8_t  rgb = 0xff;
+    set_sys_clock_khz(133000, true);
+
     stdio_init_all();
     printf("Hello! MacroPad debug.\r\n");
 
+    // Setup Softbuttons
     gpio_init(PIN_SB0);
     gpio_init(PIN_SB1);
     gpio_init(PIN_SB2);
@@ -144,6 +130,11 @@ int main(void) {
     debouncer.debounce_gpio(PIN_SB1);
     debouncer.debounce_gpio(PIN_SB2);
     debouncer.debounce_gpio(PIN_SB3);
+
+    gpio_set_irq_enabled_with_callback(PIN_SB0, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,true, &gpio_callback);
+    gpio_set_irq_enabled(PIN_SB1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_SB2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_SB3, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
 
     tusb_init();
     tft.init(240, 320);           // Init ST7789 320x240
@@ -179,35 +170,82 @@ int main(void) {
     h_macro.init();
     h_macro.getPage(0);
 
-//    pwm_clear_irq(pwm_gpio_to_slice_num(LCD_BKL_PIN));
-//    pwm_set_irq_enabled(pwm_gpio_to_slice_num(LCD_BKL_PIN), true);
-//    irq_set_exclusive_handler(PWM_IRQ_WRAP, on_pwm_wrap);
-//    irq_set_enabled(PWM_IRQ_WRAP, false);
+    //    pwm_clear_irq(pwm_gpio_to_slice_num(LCD_BKL_PIN));
+    //    pwm_set_irq_enabled(pwm_gpio_to_slice_num(LCD_BKL_PIN), true);
+    //    irq_set_exclusive_handler(PWM_IRQ_WRAP, on_pwm_wrap);
+    //    irq_set_enabled(PWM_IRQ_WRAP, false);
 
     printf("Initialized\r\n");
+    taskloop();
+}
 //    us_time = to_us_since_boot(get_absolute_time());
 
     //    gpio_set_irq_enabled_with_callback(TP_IRQ_PIN, GPIO_IRQ_EDGE_FALL, true, &inter_test);
+void taskloop()
+{
+    bool Pressed = false;
+    uint16_t Xpoint0 = 0, Ypoint0 = 0xffff;
+    bool sleep_mode = false;
+    struct repeating_timer timer;
+    uint32_t idle_time;
+    uint32_t us_time = to_ms_since_boot(get_absolute_time());
+    int8_t sb = -1;
+
     while (1)
     {
+        idle_time = to_ms_since_boot(get_absolute_time()) - us_time;
         tud_task();
-        hid_task();
- 
-        if ( !debouncer.read(PIN_SB0))
+
+        doSoftButtons();
+
+        if (sbuttons != 0 && !buttons_read)
         {
-            printf("debouncer %d\r\n", debouncer.read(PIN_SB0));
-        }
-        if (!debouncer.read(PIN_SB1))
-        {
-            printf("debouncer %d\r\n", debouncer.read(PIN_SB1));
-        }
-        if (!debouncer.read(PIN_SB2))
-        {
-            printf("debouncer %d\r\n", debouncer.read(PIN_SB2));
-        }
-        if (!debouncer.read(PIN_SB3))
-        {
-            printf("debouncer %d\r\n", debouncer.read(PIN_SB3));
+            buttons_read = true;
+            idle_time = 0; 
+            us_time = to_ms_since_boot(get_absolute_time());
+            uint8_t count = 0;
+            
+            for (uint8_t i = 0; i < 8; i++)
+            {
+                count += (sbuttons >> i) & 1;
+            }
+            switch (count)
+            {
+            case 1:  // Single button
+                for (uint8_t i = 0; i < 4; i++)
+                {
+                    if ((sbuttons >> i) & 1)
+                    {
+                        h_macro.forceCallback(i);
+                    }
+                }
+                break;
+            case 2: // 2 Button chord
+                switch (sbuttons)
+                {
+                case 0x3: // SB0 & SB1
+                    break;
+                case 0x6: // SB1 && SB2
+                    break;
+                case 0xC: // SB2 && SB3
+                    break;
+                default: 
+                    break;
+                }
+                if ( sbuttons == 0x3 ) // SB0 & SB1
+                if ( sbuttons)
+                break;
+            case 3: // 3 button chord
+                break;
+            case 4: // all buttons!
+                h_macro.loadJSON(); // reload json
+                h_macro.getPage(0);
+//                watchdog_enable(1, 1);
+//                while (1);
+                break;
+            default: // how the hell did we get here?
+                break;
+            }
         }
 
         TP.Scan();
@@ -235,19 +273,18 @@ int main(void) {
             Pressed = false;
         }
 
-        idle_time = to_ms_since_boot(get_absolute_time()) - us_time;
-
+        /*
+         Dim the backlight when the unit is not used for MAXIDLE seconds
+        */
         if (Pressed)
             idle_time = 0;
 
-        //if (to_ms_since_boot(get_absolute_time()) % 1000 == 0)
-        //    printf("idle_time: %lu\r\n", idle_time);
         if ((idle_time /1000) > MAXIDLE)
         {
             if (!sleep_mode)
             {
                 fade = tft.getBacklight();
-                add_repeating_timer_ms(6554/MAXFADE, on_pwm_wrap, NULL, &timer);
+                add_repeating_timer_ms(6554/MAXFADE, autofade, NULL, &timer);
                 sleep_mode = true;
             }
         }
@@ -255,178 +292,62 @@ int main(void) {
             if (sleep_mode)
             {
                 cancel_repeating_timer(&timer);
-                tft.invertDisplay(false);
                 tft.setBacklight(255);
                 sleep_mode = false;
             }
         }
-//        printf("timer: %p\r\n", timer);
     }
 }
-//--------------------------------------------------------------------+
-// Device callbacks
-//--------------------------------------------------------------------+
 
-// Invoked when device is mounted
-void tud_mount_cb(void)
+void doSoftButtons()
 {
-//    blink_interval_ms = BLINK_MOUNTED;
-}
-
-// Invoked when device is unmounted
-void tud_umount_cb(void)
-{
-//    blink_interval_ms = BLINK_NOT_MOUNTED;
-}
-
-// Invoked when usb bus is suspended
-// remote_wakeup_en : if host allow us  to perform remote wakeup
-// Within 7ms, device must draw an average of current less than 2.5 mA from bus
-void tud_suspend_cb(bool remote_wakeup_en)
-{
-    (void)remote_wakeup_en;
-//    blink_interval_ms = BLINK_SUSPENDED;
-}
-
-// Invoked when usb bus is resumed
-void tud_resume_cb(void)
-{
-//    blink_interval_ms = BLINK_MOUNTED;
-}
-
-//--------------------------------------------------------------------+
-// USB HID
-//--------------------------------------------------------------------+
-
-// Every 10ms, we will sent 1 report for each HID profile (keyboard, mouse etc ..)
-// tud_hid_report_complete_cb() is used to send the next report after previous one is complete
-void hid_task(void)
-{
-    // Poll every 10ms
-    const uint32_t interval_ms = 10;
-    static uint32_t start_ms = 0;
-
-    if (board_millis() - start_ms < interval_ms) return; // not enough time
-    start_ms += interval_ms;
-
-    uint32_t const btn = board_button_read();
-    if (tud_suspended() && btn)
+    if (!debouncer.read(PIN_SB0) && (sb_pressed & 0x1) == false)
     {
-        // Wake up host if we are in suspend mode
-        // and REMOTE_WAKEUP feature is enabled by host
-        tud_remote_wakeup();
+        sb_pressed |= SB0;
     }
-    else
+    if (debouncer.read(PIN_SB0)) {
+        sb_pressed &= ~(SB0);
+    }
+
+    if (!debouncer.read(PIN_SB1) && (sb_pressed & 0x2) == false)
     {
-        // keyboard interface
-        if (tud_hid_n_ready(ITF_NUM_KEYBOARD))
+        sb_pressed |= SB1;
+    }
+    if (debouncer.read(PIN_SB1)) {
+        sb_pressed &= ~(SB1);
+    }
+
+    if (!debouncer.read(PIN_SB2) && (sb_pressed & 0x4) == false)
+    {
+        sb_pressed |= SB2;
+    }
+    if (debouncer.read(PIN_SB2)) {
+        sb_pressed &= ~(SB2);
+    }
+
+    if (!debouncer.read(PIN_SB3) && (sb_pressed & 0x8) == false)
+    {
+        sb_pressed |= SB3;
+    }
+    if (debouncer.read(PIN_SB3)) {
+        sb_pressed &= ~(SB3);
+    }
+
+    if ( sb_pressed != 0x0 && to_ms_since_boot(get_absolute_time()) - btnTimeStamp > 50)
+    {
+        sbuttons = sb_pressed;
+    }
+    else {
+        if (sb_pressed == 0 && btnTimeStamp != 0)
         {
-            // used to avoid send multiple consecutive zero report for keyboard
-            static bool has_keyboard_key = false;
-
-            uint8_t const report_id = 0;
-            uint8_t const modifier = 0;
-
-            if (btn)
-            {
-                uint8_t keycode[6] = { 0 };
-                keycode[0] = HID_KEY_ARROW_RIGHT;
-
-                tud_hid_n_keyboard_report(ITF_NUM_KEYBOARD, report_id, modifier, keycode);
-                has_keyboard_key = true;
-            }
-            else
-            {
-                // send empty key report if previously has key pressed
-                if (has_keyboard_key) tud_hid_n_keyboard_report(ITF_NUM_KEYBOARD, report_id, modifier, NULL);
-                has_keyboard_key = false;
-            }
-        }
-
-        // mouse interface
-        if (tud_hid_n_ready(ITF_NUM_MOUSE))
-        {
-            if (btn)
-            {
-                uint8_t const report_id = 0;
-                uint8_t const button_mask = 0;
-                uint8_t const veritical = 0;
-                uint8_t const horizontal = 0;
-                int8_t  const delta = 5;
-
-                tud_hid_n_mouse_report(ITF_NUM_MOUSE, report_id, button_mask, delta, delta, veritical, horizontal);
-            }
+            btnTimeStamp = 0;
+            sbuttons = 0;
         }
     }
 }
 
-// Invoked when received SET_PROTOCOL request
-// protocol is either HID_PROTOCOL_BOOT (0) or HID_PROTOCOL_REPORT (1)
-void tud_hid_set_protocol_cb(uint8_t instance, uint8_t protocol)
+void gpio_callback(uint gpio, uint32_t events)
 {
-    (void)instance;
-    (void)protocol;
-
-    // nothing to do since we use the same compatible boot report for both Boot and Report mode.
-    // TOOD set a indicator for user
-}
-
-// Invoked when sent REPORT successfully to host
-// Application can use this to send the next report
-// Note: For composite reports, report[0] is report ID
-void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint8_t len)
-{
-    (void)instance;
-    (void)report;
-    (void)len;
-
-    // nothing to do
-}
-
-// Invoked when received GET_REPORT control request
-// Application must fill buffer report's content and return its length.
-// Return zero will cause the stack to STALL request
-uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
-{
-    // TODO not Implemented
-    (void)instance;
-    (void)report_id;
-    (void)report_type;
-    (void)buffer;
-    (void)reqlen;
-    
-    return 0;
-}
-
-// Invoked when received SET_REPORT control request or
-// received data on OUT endpoint ( Report ID = 0, Type = 0 )
-void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
-{
-    (void)report_id;
-
-    // keyboard interface
-    if (instance == ITF_NUM_KEYBOARD)
-    {
-        // Set keyboard LED e.g Capslock, Numlock etc...
-        if (report_type == HID_REPORT_TYPE_OUTPUT)
-        {
-            // bufsize should be (at least) 1
-            if (bufsize < 1) return;
-
-            uint8_t const kbd_leds = buffer[0];
-
-            if (kbd_leds & KEYBOARD_LED_CAPSLOCK)
-            {
-                // Capslock On: disable blink, turn led on
-  //              blink_interval_ms = 0;
-  //              board_led_write(true);
-            }
-            else
-            {
-                // Caplocks Off: back to normal blink
-//                board_led_write(false);
-//                blink_interval_ms = BLINK_MOUNTED;
-            }
-        }
-    }
+    buttons_read = false;
+    btnTimeStamp = to_ms_since_boot(get_absolute_time()); // Create timestamp
 }

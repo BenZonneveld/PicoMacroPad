@@ -27,6 +27,7 @@ public:
 	static void SoftButton(uint8_t pos, char* sbname, void(*action)());
 	static void SoftButton(uint8_t pos);
 	int8_t hitSoftButton(uint16_t xpoint, uint16_t ypoint);
+	void forceCallback(uint8_t pos) { if (mButtonCallback[pos] != nullptr) mButtonCallback[pos](); }
 private:
 	static bool isInside(uint16_t x, uint16_t y, uint16_t sz, uint16_t xpoint, uint16_t ypoint);
 	static void CreateShortCut(uint8_t pos, const char* icon, const char* name);
