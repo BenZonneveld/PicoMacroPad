@@ -89,7 +89,7 @@ protected:
   UINT BytesRead;
 };
 
-FRESULT mount_card();
-void umount_card();
+//FRESULT mount_card();
+//void umount_card();
 
 #endif // __Image_READER_H__

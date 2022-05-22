@@ -13,6 +13,8 @@ set(BOARD raspberry_pi_pico)
 # Default path to the SDK
 set(PICO_BOARD pico)
 
+add_subdirectory(FatFS build)
+
 # Pull in Pico SDK (must be before project)
 family_get_project_name(PROJECT ${CMAKE_CURRENT_LIST_DIR})
 project(${PROJECT} C CXX ASM)
@@ -27,21 +29,28 @@ pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_LIST_DIR}/Debounce/debounce.
 
 target_include_directories(${PROJECT} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/FatFS
         ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler
         ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader
         ${CMAKE_CURRENT_SOURCE_DIR}/Debounce
+        ${CMAKE_CURRENT_SOURCE_DIR}/GUI
+        ${CMAKE_CURRENT_SOURCE_DIR}/Touch
 )        
 
 target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroPad.cpp
+#  ${CMAKE_CURRENT_SOURCE_DIR}/core1Tasks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tud.c
   ${CMAKE_CURRENT_SOURCE_DIR}/msc_disk.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/hw_config.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/sdspi_config.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/Touch/Touch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/macrohandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/TinyUSB_Mouse_and_Keyboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader/ImageReader.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Debounce/debounce.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GUI/gui.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GUI/tools.c
 )
 
 pico_set_program_name(${PROJECT} "MacroPad")
@@ -59,7 +68,9 @@ target_link_libraries(${PROJECT} PUBLIC
         hardware_watchdog
         hardware_gpio
         hardware_pio
-        touch
+        hardware_spi
+        hardware_dma
+#        pico_multicore
         GFX-lib
         FatFs_SPI
 )

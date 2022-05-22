@@ -8,17 +8,17 @@
 #include <hardware/pwm.h>
 #include <hardware/irq.h>
 #include <hardware/watchdog.h>
-
+//#include <pico/multicore.h>
 //#include <hardware/spi.h>
-#include <bsp/board.h>
-#include <tusb.h>
-#include "usb_descriptors.h"
 
 /* FAT FS */
 #include "f_util.h"
 #include "ff.h"
 #include "hw_config.h"
 
+#include <bsp/board.h>
+#include <tusb.h>
+#include "usb_descriptors.h"
 //#include "reader.h" // JSON Reader
 //#include "filereadstream.h"
 #include "document.h"
@@ -29,6 +29,7 @@
 
 #include "gpio_pins.h"
 #include "Touch.h"
+//#include "debounce.h"
 #include "MacroHandler/macrohandler.h"
 #include "MacroPad.h"
 
@@ -40,8 +41,10 @@
 //Adafruit_SPITFT tft = Adafruit_SPITFT(240,320);
 //TFTSDTouch device = TFTSDTouch();
 
-#include "debounce.h"
+#include "msc_disk.h"
+#include "GUI/gui.h"
 
+cGUI gui;
 cTouch TP = cTouch();
 Adafruit_SPITFT tft = Adafruit_SPITFT();
 CMacro h_macro = CMacro();
@@ -51,6 +54,8 @@ static int fade;
 static uint32_t btnTimeStamp = 0;
 uint8_t sbuttons = 0;
 bool buttons_read = false;
+bool sleep_mode = false;
+struct repeating_timer timer;
 
 using namespace rapidjson;
 uint32_t millis()
@@ -111,7 +116,8 @@ int main(void) {
 
     stdio_init_all();
     printf("Hello! MacroPad debug.\r\n");
-
+    tusb_init();
+//    multicore_launch_core1(setup);
     // Setup Softbuttons
     gpio_init(PIN_SB0);
     gpio_init(PIN_SB1);
@@ -126,6 +132,7 @@ int main(void) {
     gpio_pull_up(PIN_SB2);
     gpio_pull_up(PIN_SB3);
 
+    mount_card();
     debouncer.debounce_gpio(PIN_SB0);
     debouncer.debounce_gpio(PIN_SB1);
     debouncer.debounce_gpio(PIN_SB2);
@@ -135,8 +142,8 @@ int main(void) {
     gpio_set_irq_enabled(PIN_SB1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(PIN_SB2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(PIN_SB3, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-
-    tusb_init();
+ //   gpio_set_irq_enabled(TP_IRQ_PIN, GPIO_IRQ_LEVEL_LOW, true);
+    
     tft.init(240, 320);           // Init ST7789 320x240
 //    device.mmc.Init();
     tft.setRotation(L2R_D2U);
@@ -161,14 +168,13 @@ int main(void) {
     tft.fillScreen(tft.color565(0, 0, BLACK));
     //}
     TP.GetAdFac();
-    //    device.TP.Adjust();
     tft.setCursor(100, 100);
     tft.setTextSize(1);
     tft.setFont(&FreeSans24pt7b);
     tft.println("INIT");
 
     h_macro.init();
-    h_macro.getPage(0);
+    h_macro.showPage(0);
 
     //    pwm_clear_irq(pwm_gpio_to_slice_num(LCD_BKL_PIN));
     //    pwm_set_irq_enabled(pwm_gpio_to_slice_num(LCD_BKL_PIN), true);
@@ -185,17 +191,14 @@ void taskloop()
 {
     bool Pressed = false;
     uint16_t Xpoint0 = 0, Ypoint0 = 0xffff;
-    bool sleep_mode = false;
-    struct repeating_timer timer;
     uint32_t idle_time;
     uint32_t us_time = to_ms_since_boot(get_absolute_time());
     int8_t sb = -1;
 
     while (1)
     {
-        idle_time = to_ms_since_boot(get_absolute_time()) - us_time;
         tud_task();
-
+        idle_time = to_ms_since_boot(get_absolute_time()) - us_time;
         doSoftButtons();
 
         if (sbuttons != 0 && !buttons_read)
@@ -209,6 +212,7 @@ void taskloop()
             {
                 count += (sbuttons >> i) & 1;
             }
+            disableSleep();
             switch (count)
             {
             case 1:  // Single button
@@ -224,10 +228,16 @@ void taskloop()
                 switch (sbuttons)
                 {
                 case 0x3: // SB0 & SB1
+                    gui.brightness();
+                    h_macro.showPage(h_macro.getPage());
                     break;
                 case 0x6: // SB1 && SB2
+ //                   gui.test();
+ //                   h_macro.showPage(h_macro.getPage());
                     break;
                 case 0xC: // SB2 && SB3
+                    TP.Adjust();
+                    h_macro.showPage(h_macro.getPage());
                     break;
                 default: 
                     break;
@@ -239,7 +249,7 @@ void taskloop()
                 break;
             case 4: // all buttons!
                 h_macro.loadJSON(); // reload json
-                h_macro.getPage(0);
+                h_macro.showPage(0);
 //                watchdog_enable(1, 1);
 //                while (1);
                 break;
@@ -289,12 +299,7 @@ void taskloop()
             }
         }
         else {
-            if (sleep_mode)
-            {
-                cancel_repeating_timer(&timer);
-                tft.setBacklight(255);
-                sleep_mode = false;
-            }
+            disableSleep();
         }
     }
 }
@@ -350,4 +355,14 @@ void gpio_callback(uint gpio, uint32_t events)
 {
     buttons_read = false;
     btnTimeStamp = to_ms_since_boot(get_absolute_time()); // Create timestamp
+}
+
+void disableSleep()
+{
+    if (sleep_mode)
+    {
+        cancel_repeating_timer(&timer);
+        tft.setBacklight(tft.getBacklight());
+        sleep_mode = false;
+    }
 }

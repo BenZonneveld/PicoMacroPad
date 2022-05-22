@@ -1,5 +1,5 @@
-//#include "reader.h" // JSON Reader
-//#include "filereadstream.h"
+#ifndef _MACRO_H_
+#define _MACRO_H_
 #include "document.h"
 
 
@@ -20,8 +20,9 @@ public:
 	//	void getCurrentPage();
 	static void NextPage();
 	static void PrevPage();
-	bool loadJSON();
-	static void getPage(uint8_t pageNum);
+	static bool loadJSON();
+	static void showPage(uint8_t pageNum);
+	uint8_t getPage() { return current_page; }
 	bool checkHit(uint16_t xpos, uint16_t ypos);
 	char* getPageName() { return pagename; }
 	static void SoftButton(uint8_t pos, char* sbname, void(*action)());
@@ -35,7 +36,7 @@ private:
 	static Document doc;
 	static ParseResult prOk;
 	static Value buttons;
-	static uint8_t page;
+	static uint8_t current_page;
 	static uint8_t max_page;
 	static char pagename[64];
 	static char sbnames[4][10];
@@ -47,5 +48,5 @@ private:
 	//	void* mButton2Callback = nullptr;
 	//	void* mButton3Callback = nullptr;
 };
-
+#endif
 

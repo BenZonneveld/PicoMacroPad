@@ -13,7 +13,7 @@
 #include "TinyUSB_Mouse_and_Keyboard.h"
 
 uint8_t CMacro::max_page;
-uint8_t CMacro:: page;
+uint8_t CMacro::current_page;
 Value CMacro::buttons;
 char CMacro::pagename[64];
 char CMacro::sbnames[4][10];
@@ -99,19 +99,19 @@ void CMacro::init()
 
 void CMacro::PrevPage()
 {
-    if (page > 0)
+    if (current_page > 0)
     {
-        page--;
-        getPage(page);
+        current_page--;
+        showPage(current_page);
     }
 }
 
 void CMacro::NextPage()
 {
-    if (page + 1 < max_page)
+    if (current_page + 1 < max_page)
     {
-        page++;
-        getPage(page);
+        current_page++;
+        showPage(current_page);
     }
 }
 
@@ -125,7 +125,6 @@ bool CMacro::loadJSON()
     FIL fp;
     uint32_t mytime = to_ms_since_boot(get_absolute_time());
 
-    mount_card();
     uint8_t res = f_open(&fp, (char*)"macro.json", FA_READ);
 
     char macrobuf[65535] = { 0 };
@@ -135,7 +134,6 @@ bool CMacro::loadJSON()
         f_read(&fp, macrobuf, 65535, &bread);
     }
     else {
-        umount_card();
         return false;
     }
     f_close(&fp);
@@ -144,23 +142,23 @@ bool CMacro::loadJSON()
     printf("json parse took %" PRIu32 " milliseconds.\r\n", mytime);
     prOk = doc.Parse(macrobuf);
 
-    umount_card();
-    printf("Parsed macro.json\r\n");
-
     if (prOk)
     {
+        printf("Parsed macro.json\r\n");
         return true;
     }
     else {
+        printf("Parsing macro.json failed!!!\r\n");
         return false;
     }
 }
 
-void CMacro::getPage(uint8_t pageNmbr)
+void CMacro::showPage(uint8_t pageNmbr)
 {
     int16_t  x1, y1;
     uint16_t w, h;
     uint8_t pwm_tmp = tft.getBacklight();
+    loadJSON();
     if (!prOk)
     {
         return;
@@ -168,7 +166,7 @@ void CMacro::getPage(uint8_t pageNmbr)
     tft.fillScreen(BLACK);
     tft.setBacklight(0);
 
-    mount_card();
+//    mount_card();
     assert(doc.HasMember("page"));
     const Value& pages = doc["page"];
     if (pageNmbr >= pages.Size())
@@ -176,18 +174,17 @@ void CMacro::getPage(uint8_t pageNmbr)
         tft.setBacklight(pwm_tmp);
         return;
     }
-    page = pageNmbr;
+    current_page = pageNmbr;
     max_page = pages.Size();
 
     printf("max_page %i\r\n", max_page);
 
-
-    if (doc["page"][page].HasMember("name"))
+    if (doc["page"][current_page].HasMember("name"))
     {
-        sprintf(pagename, "%s", doc["page"][page]["name"].GetString());
+        sprintf(pagename, "%s", doc["page"][current_page]["name"].GetString());
     }
     else {
-        sprintf(pagename, "Page %i", page + 1);
+        sprintf(pagename, "Page %i", current_page + 1);
     }
     tft.setFont(&FreeSans12pt7b);
     tft.setTextColor(WHITE);
@@ -197,7 +194,7 @@ void CMacro::getPage(uint8_t pageNmbr)
     tft.print(pagename);
 
 
-    if (max_page > 1 && (page + 1) < max_page) // Indicate next pages available
+    if (max_page > 1 && (current_page + 1) < max_page) // Indicate next pages available
     {
         //            tft.fillTriangle(320, h / 2, 300, 0, 300, h, GREEN);
         SoftButton(3, (char*)"Page +", &CMacro::NextPage);
@@ -205,7 +202,7 @@ void CMacro::getPage(uint8_t pageNmbr)
     else {
         SoftButton(3, NULL, NULL);
     }
-    if (max_page > 1 && page > 0) // Indicate previous pages available
+    if (max_page > 1 && current_page > 0) // Indicate previous pages available
     {
         SoftButton(0, (char*)"Page -", &CMacro::PrevPage);
         //            tft.fillTriangle(0, h / 2, 20, 0, 20, h, GREEN);
@@ -215,25 +212,27 @@ void CMacro::getPage(uint8_t pageNmbr)
     }
 
 
-    Value& page = doc["page"][pageNmbr];
+    Value& page = doc["page"][current_page];
     assert(page.HasMember("button"));
     buttons = page["button"];
     assert(buttons.IsArray());
+
+    printf("Buttons size: %i\r\n", buttons.Size());
     for (SizeType i = 0; i < buttons.Size(); i++) // Uses SizeType instead of size_t
     {
         const Value& but = buttons[i];
-        assert(but.IsArray());
-        assert(but.HasMember["icon"]);
+ /*       assert(but.IsArray());
+        assert(buttons[i].HasMember["icon"]);
         assert(but["icon"].IsString());
         assert(but.HasMember["name"]);
         assert(but["name"].IsString());
         assert(but.HasMember["keys"]);
-        assert(but["keys"].IsArray());
+        assert(but["keys"].IsArray());*/
         CreateShortCut(i, but["icon"].GetString(), but["name"].GetString());
     }
     SoftButton(1);
     SoftButton(2);
-    umount_card();
+//    umount_card();
     tft.setBacklight(pwm_tmp);
     return;// buttons;
 }
@@ -276,8 +275,8 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
     {
         const Value& but = buttons[pos];
         assert(but.IsArray());
-//        assert(but.HasMember["name"]);
-//        assert(but["name"].IsString());
+        assert(but.HasMember["name"]);
+        assert(but["name"].IsString());
         assert(but.HasMember["keys"]);
         assert(but["keys"].IsArray());
         uint16_t ypos = YOFFSET;
@@ -287,46 +286,79 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
             ypos = ypos + BUTSIZE + YSPACING;
             xpos = XOFFSET;
         }
+        
         //                printf("index: %i, xpoint: %i, ypoint: %i\r\n", i, xpoint, ypoint);
         if (isInside(xpos, ypos, BUTSIZE, xpoint, ypoint))
         {
+            printf("Check if inside\r\n");
+            
             Pressed = true;
             const Value& keys = but["keys"];
+            const Value& ctrlXY = but["ctrlxy"];
             //                    keys.SetArray();
+
             assert(keys.IsArray());
-//            printf("I: %i\r\n", pos);
-//            printf("Keys size %i\r\n", keys.Size());
-            uint8_t keycode[6] = { 0 };
-            for (SizeType i = 0; i < keys.Size(); i++) // Uses SizeType instead of size_t
+            printf("I: %i\r\n", pos);
+//            printf("ctrlXY size %s\r\n", (char*)ctrlXY);
+            if (ctrlXY.IsObject())
             {
-                char key[32];
-//                printf("keys[%i].Size() = %i\r\n", i, keys[i].Size());
-
-                for (SizeType m = 0; m < keys[i].Size(); m++)
+                uint16_t x, y, w, h, xmin, xmax, ymin, ymax, xctrl, yctrl;
+                if (ctrlXY.HasMember("x") &&
+                    ctrlXY.HasMember("y") &&
+                    ctrlXY.HasMember("w")&&
+                    ctrlXY.HasMember("h")&&
+                    ctrlXY.HasMember("xmin")&&
+                    ctrlXY.HasMember("xmax")&&
+                    ctrlXY.HasMember("ymin")&&
+                    ctrlXY.HasMember("ymax")&&
+                    ctrlXY.HasMember("xctrl") &&
+                    ctrlXY.HasMember("yctrl"));
                 {
-                    snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
-                    if (strlen(key) > 1) // check for special or modifier keys
-                    {
-                        Upper(key);
-                        if (metakeys[key] == 0)
-                        {
-                            snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
-                            Keyboard.print(key);
-                            printf("Keystring: %s\r\n", key);
-                        }
-                        else {
-                            printf("metakey %s\r\n", key);
-                            Keyboard.press(metakeys[key]);
-
-                        }
-                    }
-                    else if (key[0] != '\0') {
-                        tolower(key[0]);
-                        Keyboard.press(key[0]);
-                        printf("Key %s\r\n", key);
-                    }
+                    gui.CtrlXY(ctrlXY["x"].GetInt(), ctrlXY["y"].GetInt(),
+                        ctrlXY["w"].GetInt(), ctrlXY["h"].GetInt(),
+                        ctrlXY["xmin"].GetInt(), ctrlXY["xmax"].GetInt(),
+                        ctrlXY["ymin"].GetInt(), ctrlXY["ymax"].GetInt(),
+                        ctrlXY["xctrl"]["type"].GetInt(), ctrlXY["xctrl"]["ctrl"].GetInt(),
+                        ctrlXY["yctrl"]["type"].GetInt(), ctrlXY["yctrl"]["ctrl"].GetInt(),
+                        ctrlXY["xctrl"]["name"].GetString(), ctrlXY["yctrl"]["name"].GetString());
+                    showPage(current_page);
+//                    printf("All Parameters exist\r\n");
                 }
-                Keyboard.releaseAll();
+            }
+            if (keys.IsArray() )
+            {
+                uint8_t keycode[6] = { 0 };
+                for (SizeType i = 0; i < keys.Size(); i++) // Uses SizeType instead of size_t
+                {
+                    char key[32];
+                    //                printf("keys[%i].Size() = %i\r\n", i, keys[i].Size());
+
+                    for (SizeType m = 0; m < keys[i].Size(); m++)
+                    {
+                        snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
+                        if (strlen(key) > 1) // check for special or modifier keys
+                        {
+                            Upper(key);
+                            if (metakeys[key] == 0)
+                            {
+                                snprintf(key, sizeof(key), "%s", keys[i][m].GetString());
+                                Keyboard.print(key);
+                                printf("Keystring: %s\r\n", key);
+                            }
+                            else {
+                                printf("metakey %s\r\n", key);
+                                Keyboard.press(metakeys[key]);
+
+                            }
+                        }
+                        else if (key[0] != '\0') {
+                            tolower(key[0]);
+                            Keyboard.press(key[0]);
+                            printf("Key %s\r\n", key);
+                        }
+                    }
+                    Keyboard.releaseAll();
+                }
             }
         }
     }

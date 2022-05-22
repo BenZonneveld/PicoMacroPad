@@ -16,8 +16,24 @@
 #include "pico/stdlib.h"
 #include "pico/float.h"
 
-#include "Adafruit_SPITFT.h"
+#include "FatFS/sd_driver/spi.h"
+//#include "../sdspi_config.h"
+#include "Adafruit_SPITFT.h" // for color info
 #include "Touch.h"
+
+void spi1_dma_isr();
+
+static spi_t spitouch = {
+    .hw_inst = spi1,  // SPI component
+    .miso_gpio = 12, // GPIO number (not pin number)
+    .mosi_gpio = 11,
+    .sck_gpio = 10,
+    .baud_rate = 3 * 1000 * 1000,  // The limitation here is SPI slew rate.        
+
+    .dma_isr = spi1_dma_isr
+};
+
+void spi1_dma_isr() { spi_irq_handler(&spitouch); }
 
 //extern uint8_t id;
 //#define WIDTH 240
@@ -44,23 +60,30 @@ parameter:
 uint16_t cTouch::Read_ADC(uint8_t CMD)
 {
     uint16_t Data = 0;
-
+    uint8_t dat1 = 0;
+    uint8_t dat2 = 0;
+    uint8_t fillchr = 0;
     //A cycle of at least 400ns.
     gpio_put(LCD_CS_PIN, 1);
     gpio_put(SD_CS_PIN, 1);
     gpio_put(TP_CS_PIN,0);
 
+//    spi_transfer(&spitouch, &CMD, NULL, 1);
     SPI4W_Write_Byte(CMD);
     sleep_us(200);
 
     //	dont write 0xff, it will block xpt2046  
     //Data = SPI4W_Read_Byte(0Xff);
+//    spi_transfer(&spitouch, &fillchr, &dat1, 1);
+//    spi_transfer(&spitouch, &fillchr, &dat2, 1);
+
     Data = SPI4W_Read_Byte(0X00);
-    Data <<= 8;//7bit
+    Data = (Data << 8);// | dat2;//7bit
     Data |= SPI4W_Read_Byte(0X00);
     //Data = SPI4W_Read_Byte(0Xff);
     Data >>= 3;//5bit
     gpio_put(TP_CS_PIN,1);
+//    printf("Data: %i\r\n", Data);
     return Data;
 }
 
@@ -240,7 +263,7 @@ void cTouch::Adjust(void)
     float Dsqrt;
 
     tft->fillRect(0, 0, tft->width(), tft->height(), WHITE);
-    tft->setTextSize(2);
+    tft->setTextSize(1);
     tft->setCursor(0, 60);
     tft->setTextColor(RED);
     tft->print("Please use the stylus to\r\n"\
@@ -466,7 +489,7 @@ void cTouch::Adjust(void)
                 //LCD_Clear(LCD_BACKGROUND);
                 tft->fillRect(0, 0, tft->width(), tft->height(), WHITE);
                 tft->setCursor(35, 110);
-                tft->setTextColor(RED);
+                tft->setTextColor(GREEN);
                 tft->print("Touch Screen Adjust OK!");
                 sleep_ms(1000);
                 tft->fillRect(0, 0, tft->width(), tft->height(), BLACK);

@@ -224,7 +224,9 @@ void Adafruit_SPITFT::writePixels(uint16_t* colors, uint32_t len, bool block,
     }
     else {
     uint8_t rxDat;
+//    &spis[0]
         spi_write_blocking(spi1, (uint8_t*)colors,len * 2);
+ //       spi_transfer()
     }
     endWrite();
     return;

@@ -4,14 +4,20 @@
  **************************************************************************/
 #include "Adafruit_GFX.h"
 #include "touch.h"
+#include "debounce.h"
+#include "MacroHandler.h"
+#include "gui.h"
 
 extern const GFXfont FreeSans9pt7b;
 extern const GFXfont FreeSans12pt7b;
 extern const GFXfont FreeSans18pt7b;
 extern const GFXfont FreeSans24pt7b;
 
+extern cGUI gui;
 extern cTouch TP;
 extern Adafruit_SPITFT tft;
+extern Debounce debouncer;
+extern CMacro h_macro;
 
 #define MAXIDLE 30
 #define MAXFADE 96
@@ -28,3 +34,4 @@ int main(void);
 void taskloop();
 void doSoftButtons();
 void gpio_callback(uint gpio, uint32_t events);
+void disableSleep();
