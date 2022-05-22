@@ -260,11 +260,17 @@ bool cGUI::XYCtrl::updateXY(uint16_t posix, uint16_t posiy)
 	if ((xval >= 0 && posix != xval) || (yval >= 0 && posiy != yval))
 	{
 //		printf("Xpos: %i\tYpos: %i\r\n", posix, maxy - posiy);
-		uint16_t pos[2] = { posix, maxy-posiy };
+		uint16_t pos[2] = { posix, (uint16_t)maxy-posiy };
+		uint16_t minp[2] = { minx, miny };
+		uint16_t maxp[2] = { maxx, maxy };
 		for (uint8_t i = 0; i < 2; i++)
 		{
 			if (type[i] == 0)
 			{
+				if (pos[i] > 0x7F)
+				{
+					pos[i] = map(pos[i], minp[i], maxp[i], 0, 127);
+				}
 				printf("%i MIDI CC: %i value %i\r\n", i, ctrl[i], pos[i]);
 			}
 			if (type[i] == 1)
@@ -312,6 +318,7 @@ void cGUI::CtrlXY(uint16_t x, uint16_t y,
 	uint8_t ytype, uint16_t yctrl,
 	const char *xname, const char *yname)
 {
+//	prinft("xctrl: %i\tyctrl: %i\r\n", xctrl, yctrl);
 	XYCtrl cXY;
 	cXY.type[0] = xtype;
 	cXY.type[1] = ytype;
@@ -334,14 +341,14 @@ void cGUI::CtrlXY(uint16_t x, uint16_t y,
 		doSoftButtons();
 		if ( touchPosition())
 		{
-			sb = h_macro.hitSoftButton(getXpos(), getYpos());
+//			sb = h_macro.hitSoftButton(getXpos(), getYpos());
 			cXY.updateXY(getXpos(), getYpos());
 		}
 		//if (!debouncer.read(PIN_SB0) || sb == 0)
 		//{
 		//	break;
 		//}
-		if (!debouncer.read(PIN_SB3) || sb == 3)
+		if (!debouncer.read(PIN_SB3) /* || sb == 3*/) // disable screenbutton on xy controls
 			break;
 	}
 }

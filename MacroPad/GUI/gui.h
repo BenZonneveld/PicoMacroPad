@@ -60,7 +60,7 @@ public:
 		void getXVal();
 		void geyYval();
 		uint8_t type[2];
-		uint8_t ctrl[2];
+		uint16_t ctrl[2];
 	protected:
 		uint16_t x, y, w, h, minx, maxx, miny, maxy, xval, yval;
 		const char* xname;
