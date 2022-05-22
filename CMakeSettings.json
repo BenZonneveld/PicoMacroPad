@@ -32,6 +32,11 @@
           "name": "PICO_STDIO_USB",
           "value": "True",
           "type": "BOOL"
+        },
+        {
+          "name": "PICO_DEOPTIMIZED_DEBUG",
+          "value": "True",
+          "type": "BOOL"
         }
       ]
     },

@@ -4,6 +4,7 @@
 #include "ff.h"
 #include "hw_config.h"
 
+#include "msc_disk.h"
 #if CFG_TUD_MSC
 
 // whether host does safe-eject
@@ -114,8 +115,9 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
   // out of disk
   if ( lba >= sd_sectors(sd_get_by_num(0)) ) return -1;
 
+  umount_card();
   sd_write_blocks(sd_get_by_num(0),buffer,lba, bufsize/512);
-
+  mount_card();
   return bufsize;
 }
 
@@ -165,4 +167,17 @@ int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, 
   return resplen;
 }
 
+FRESULT mount_card()
+{
+    sd_card_t* pSD = sd_get_by_num(0);
+    FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
+    if (FR_OK != fr) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
+    return fr;
+}
+
+void umount_card()
+{
+    sd_card_t* pSD = sd_get_by_num(0);
+    f_unmount(pSD->pcName);
+}
 #endif

@@ -13,7 +13,7 @@
 #include "TinyUSB_Mouse_and_Keyboard.h"
 
 uint8_t CMacro::max_page;
-uint8_t CMacro:: page;
+uint8_t CMacro::current_page;
 Value CMacro::buttons;
 char CMacro::pagename[64];
 char CMacro::sbnames[4][10];
@@ -99,19 +99,19 @@ void CMacro::init()
 
 void CMacro::PrevPage()
 {
-    if (page > 0)
+    if (current_page > 0)
     {
-        page--;
-        getPage(page);
+        current_page--;
+        showPage(current_page);
     }
 }
 
 void CMacro::NextPage()
 {
-    if (page + 1 < max_page)
+    if (current_page + 1 < max_page)
     {
-        page++;
-        getPage(page);
+        current_page++;
+        showPage(current_page);
     }
 }
 
@@ -125,7 +125,6 @@ bool CMacro::loadJSON()
     FIL fp;
     uint32_t mytime = to_ms_since_boot(get_absolute_time());
 
-    mount_card();
     uint8_t res = f_open(&fp, (char*)"macro.json", FA_READ);
 
     char macrobuf[65535] = { 0 };
@@ -135,7 +134,6 @@ bool CMacro::loadJSON()
         f_read(&fp, macrobuf, 65535, &bread);
     }
     else {
-        umount_card();
         return false;
     }
     f_close(&fp);
@@ -144,7 +142,6 @@ bool CMacro::loadJSON()
     printf("json parse took %" PRIu32 " milliseconds.\r\n", mytime);
     prOk = doc.Parse(macrobuf);
 
-    umount_card();
     printf("Parsed macro.json\r\n");
 
     if (prOk)
@@ -156,11 +153,12 @@ bool CMacro::loadJSON()
     }
 }
 
-void CMacro::getPage(uint8_t pageNmbr)
+void CMacro::showPage(uint8_t pageNmbr)
 {
     int16_t  x1, y1;
     uint16_t w, h;
     uint8_t pwm_tmp = tft.getBacklight();
+    loadJSON();
     if (!prOk)
     {
         return;
@@ -168,7 +166,7 @@ void CMacro::getPage(uint8_t pageNmbr)
     tft.fillScreen(BLACK);
     tft.setBacklight(0);
 
-    mount_card();
+//    mount_card();
     assert(doc.HasMember("page"));
     const Value& pages = doc["page"];
     if (pageNmbr >= pages.Size())
@@ -176,18 +174,18 @@ void CMacro::getPage(uint8_t pageNmbr)
         tft.setBacklight(pwm_tmp);
         return;
     }
-    page = pageNmbr;
+    current_page = pageNmbr;
     max_page = pages.Size();
 
     printf("max_page %i\r\n", max_page);
 
 
-    if (doc["page"][page].HasMember("name"))
+    if (doc["page"][current_page].HasMember("name"))
     {
-        sprintf(pagename, "%s", doc["page"][page]["name"].GetString());
+        sprintf(pagename, "%s", doc["page"][current_page]["name"].GetString());
     }
     else {
-        sprintf(pagename, "Page %i", page + 1);
+        sprintf(pagename, "Page %i", current_page + 1);
     }
     tft.setFont(&FreeSans12pt7b);
     tft.setTextColor(WHITE);
@@ -197,7 +195,7 @@ void CMacro::getPage(uint8_t pageNmbr)
     tft.print(pagename);
 
 
-    if (max_page > 1 && (page + 1) < max_page) // Indicate next pages available
+    if (max_page > 1 && (current_page + 1) < max_page) // Indicate next pages available
     {
         //            tft.fillTriangle(320, h / 2, 300, 0, 300, h, GREEN);
         SoftButton(3, (char*)"Page +", &CMacro::NextPage);
@@ -205,7 +203,7 @@ void CMacro::getPage(uint8_t pageNmbr)
     else {
         SoftButton(3, NULL, NULL);
     }
-    if (max_page > 1 && page > 0) // Indicate previous pages available
+    if (max_page > 1 && current_page > 0) // Indicate previous pages available
     {
         SoftButton(0, (char*)"Page -", &CMacro::PrevPage);
         //            tft.fillTriangle(0, h / 2, 20, 0, 20, h, GREEN);
@@ -215,25 +213,25 @@ void CMacro::getPage(uint8_t pageNmbr)
     }
 
 
-    Value& page = doc["page"][pageNmbr];
+    Value& page = doc["page"][current_page];
     assert(page.HasMember("button"));
     buttons = page["button"];
     assert(buttons.IsArray());
     for (SizeType i = 0; i < buttons.Size(); i++) // Uses SizeType instead of size_t
     {
         const Value& but = buttons[i];
-        assert(but.IsArray());
-        assert(but.HasMember["icon"]);
+ /*       assert(but.IsArray());
+        assert(buttons[i].HasMember["icon"]);
         assert(but["icon"].IsString());
         assert(but.HasMember["name"]);
         assert(but["name"].IsString());
         assert(but.HasMember["keys"]);
-        assert(but["keys"].IsArray());
+        assert(but["keys"].IsArray());*/
         CreateShortCut(i, but["icon"].GetString(), but["name"].GetString());
     }
     SoftButton(1);
     SoftButton(2);
-    umount_card();
+//    umount_card();
     tft.setBacklight(pwm_tmp);
     return;// buttons;
 }
@@ -275,11 +273,11 @@ bool CMacro::checkHit(uint16_t xpoint, uint16_t ypoint)
     for (uint8_t pos = 0; pos < buttons.Size(); pos++)
     {
         const Value& but = buttons[pos];
-        assert(but.IsArray());
-//        assert(but.HasMember["name"]);
-//        assert(but["name"].IsString());
-        assert(but.HasMember["keys"]);
-        assert(but["keys"].IsArray());
+//        assert(but.IsArray());
+////        assert(but.HasMember["name"]);
+////        assert(but["name"].IsString());
+//        assert(but.HasMember["keys"]);
+//        assert(but["keys"].IsArray());
         uint16_t ypos = YOFFSET;
         uint16_t xpos = XOFFSET + ((BUTSIZE + XSPACING)*pos);
         if ((pos % 3) == 0 && pos > 0)

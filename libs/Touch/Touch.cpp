@@ -240,7 +240,7 @@ void cTouch::Adjust(void)
     float Dsqrt;
 
     tft->fillRect(0, 0, tft->width(), tft->height(), WHITE);
-    tft->setTextSize(2);
+    tft->setTextSize(1);
     tft->setCursor(0, 60);
     tft->setTextColor(RED);
     tft->print("Please use the stylus to\r\n"\
@@ -466,7 +466,7 @@ void cTouch::Adjust(void)
                 //LCD_Clear(LCD_BACKGROUND);
                 tft->fillRect(0, 0, tft->width(), tft->height(), WHITE);
                 tft->setCursor(35, 110);
-                tft->setTextColor(RED);
+                tft->setTextColor(GREEN);
                 tft->print("Touch Screen Adjust OK!");
                 sleep_ms(1000);
                 tft->fillRect(0, 0, tft->width(), tft->height(), BLACK);

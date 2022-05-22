@@ -30,10 +30,12 @@ target_include_directories(${PROJECT} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler
         ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader
         ${CMAKE_CURRENT_SOURCE_DIR}/Debounce
+        ${CMAKE_CURRENT_SOURCE_DIR}/GUI
 )        
 
 target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroPad.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/core1Tasks.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tud.c
   ${CMAKE_CURRENT_SOURCE_DIR}/msc_disk.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
@@ -42,6 +44,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/MacroHandler/TinyUSB_Mouse_and_Keyboard.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ImageReader/ImageReader.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Debounce/debounce.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GUI/gui.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GUI/tools.c
 )
 
 pico_set_program_name(${PROJECT} "MacroPad")
@@ -59,6 +63,7 @@ target_link_libraries(${PROJECT} PUBLIC
         hardware_watchdog
         hardware_gpio
         hardware_pio
+        pico_multicore
         touch
         GFX-lib
         FatFs_SPI

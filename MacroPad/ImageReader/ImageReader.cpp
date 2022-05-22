@@ -230,7 +230,6 @@ void Image::draw(Adafruit_SPITFT &tft, int16_t x, int16_t y) {
 ImageReader::~ImageReader(void) {
 //  if (file)
     f_close(&file);
-    umount_card();
   // filesystem is left as-is
 }
 
@@ -356,12 +355,10 @@ ImageReturnCode ImageReader::coreBMP(
     if (tft && ((x >= tft->width()) || (y >= tft->height())))
         return IMAGE_SUCCESS;
 
-    mount_card();
 //    FRESULT fr = f_mount(mmc->fats)
 //    if ()
     // Open requested file on SD card
     if (f_open(&file, filename, FA_READ) != FR_OK) {
-        umount_card();
         return IMAGE_ERR_FILE_NOT_FOUND;
     }
 
@@ -540,7 +537,6 @@ ImageReturnCode ImageReader::coreBMP(
 
     tft->setRotation(rotation);
     f_close(&file);
-    umount_card();
     return status;
 }
 
@@ -687,18 +683,4 @@ uint8_t ImageReader::Dirs(char *DirName)
         }
     }
     return j;
-}
-
-FRESULT mount_card()
-{
-    sd_card_t* pSD = sd_get_by_num(0);
-    FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
-    if (FR_OK != fr) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
-    return fr;
-}
-
-void umount_card()
-{
-    sd_card_t* pSD = sd_get_by_num(0);
-    f_unmount(pSD->pcName);
 }

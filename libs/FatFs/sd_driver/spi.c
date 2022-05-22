@@ -160,7 +160,7 @@ bool my_spi_init(spi_t *pSPI) {
         }
 
         // SD cards' DO MUST be pulled up.
-        gpio_pull_up(pSPI->miso_gpio);
+//        gpio_pull_up(pSPI->miso_gpio);
 
         // Grab some unused dma channels
         pSPI->tx_dma = dma_claim_unused_channel(true);
