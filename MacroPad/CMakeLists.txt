@@ -14,7 +14,7 @@ set(BOARD raspberry_pi_pico)
 set(PICO_BOARD pico)
 
 add_subdirectory(FatFS build)
-
+#add_subdirectory(MIDI)
 # Pull in Pico SDK (must be before project)
 family_get_project_name(PROJECT ${CMAKE_CURRENT_LIST_DIR})
 project(${PROJECT} C CXX ASM)
@@ -35,6 +35,7 @@ target_include_directories(${PROJECT} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/Debounce
         ${CMAKE_CURRENT_SOURCE_DIR}/GUI
         ${CMAKE_CURRENT_SOURCE_DIR}/Touch
+        ${CMAKE_CURRENT_SOURCE_DIR}/MIDI
 )        
 
 target_sources(${PROJECT} PUBLIC
@@ -51,6 +52,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/Debounce/debounce.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GUI/gui.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GUI/tools.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/MIDI/MIDI.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/MIDI/MIDI.hpp
 )
 
 pico_set_program_name(${PROJECT} "MacroPad")
@@ -73,6 +76,7 @@ target_link_libraries(${PROJECT} PUBLIC
 #        pico_multicore
         GFX-lib
         FatFs_SPI
+#        midi
 )
 
 family_configure_device_example(${PROJECT})        

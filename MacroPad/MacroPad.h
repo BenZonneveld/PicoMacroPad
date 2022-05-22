@@ -7,6 +7,7 @@
 #include "debounce.h"
 #include "MacroHandler.h"
 #include "gui.h"
+#include "midi.h"
 
 extern const GFXfont FreeSans9pt7b;
 extern const GFXfont FreeSans12pt7b;

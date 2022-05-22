@@ -44,6 +44,10 @@
 #include "msc_disk.h"
 #include "GUI/gui.h"
 
+#include "MIDI/midi.h"
+
+MIDI_CREATE_INSTANCE();
+
 cGUI gui;
 cTouch TP = cTouch();
 Adafruit_SPITFT tft = Adafruit_SPITFT();
